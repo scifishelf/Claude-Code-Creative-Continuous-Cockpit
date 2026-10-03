@@ -2,10 +2,26 @@
 
 Übersicht aller Claude-Code-Sessions auf diesem Mac: Fortsetzen per Klick in iTerm2, Status live, eigene Namen und Beschreibungen. Plan und Stand: [docs/plans/2026-10-03-5c-v1-plan.md](docs/plans/2026-10-03-5c-v1-plan.md), Messungen: [docs/plans/2026-10-03-messungen-ist.md](docs/plans/2026-10-03-messungen-ist.md).
 
-## Stand: P5
+## Einrichten
+
+Voraussetzungen: macOS, iTerm2, Python ab 3.10 (Homebrew), Node für die Prüfkette, Claude Code.
 
 ```sh
-bin/5c dienst               # Übersicht auf http://127.0.0.1:4555/
+./install.sh      # 5C.app (fivec://), iTerm2-Profil „5C“, Dienst als launchd-Agent (Login, Neustart nach Absturz)
+./uninstall.sh    # alles wieder weg; --alles löscht auch Namen, Beschreibungen und Logs
+```
+
+Danach: http://127.0.0.1:4555/ oder 5C.app doppelklicken. Drei macOS-Abfragen beim ersten Mal, alle erlauben:
+1. **Python → Schreibtisch** (Dateien und Ordner), wenn das Repo dort liegt: sonst startet der Dienst nicht und lauscht nicht. Der Dienst liest außerdem den Git-Stand der Repos dort.
+2. **5C → iTerm** (Automation), beim ersten Klick auf einen `fivec://`-Link.
+3. **Python → iTerm** (Automation), beim ersten „Fortsetzen“ oder „Nach vorn“ auf der Seite.
+
+Logs: `~/Library/Logs/5C/dienst.log`, Aufrufe der App: `~/Library/Application Support/5C/5c.log`.
+
+## Stand: V1 (P0 bis P6)
+
+```sh
+bin/5c dienst               # Übersicht auf http://127.0.0.1:4555/ (läuft nach install.sh per launchd)
 bin/5c open <session-id>    # nach vorn holen, sonst in iTerm2 fortsetzen
 werkzeug/app_bauen.sh       # baut ~/Applications/5C.app, registriert fivec://open/<session-id>
 bin/5c list                 # Sessions mit Aktivität in den letzten 48 h, neueste zuerst

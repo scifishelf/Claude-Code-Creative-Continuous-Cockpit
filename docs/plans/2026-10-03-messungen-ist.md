@@ -104,3 +104,13 @@ Beides kann der Agent nicht selbst: Der Auto-Modus blockt, dass eine Claude-Sess
 | Der erste `fivec://`-Klick löst „5C möchte iTerm steuern“ aus; solange die Abfrage offen ist, passiert sichtbar nichts. Danach geht es | `5c.log`, vordere App | `install.sh` (P6) kündigt die Abfrage an |
 | Zwei schnelle Klicks könnten in zwei Server-Threads oder in App und Dienst gleichzeitig „keine Sperre“ sehen | Code-Durchsicht | Startsperre atomar per `O_EXCL`; Test mit 5 parallelen Aufrufen, genau ein Start |
 | Ein Start kann länger als die 15-s-Sperre dauern (z. B. offene Vertrauensfrage) | Ablauf | Zusätzlich: Läuft am gemerkten TTY schon `claude --resume <id>`, wird nicht erneut gestartet |
+
+## Nachtrag P6 (03.10.2026): Einrichten als launchd-Agent
+
+| Befund | Fundstelle | Folge |
+|---|---|---|
+| Der Dienst unter launchd startete, lauschte aber nicht und schrieb nichts ins Log. Stack: `pymain_get_importer`, also beim ersten Lesen von `bin/5c` auf dem Schreibtisch | `sample <pid>` | macOS schützt den Schreibtisch; ein launchd-Prozess braucht dafür eine eigene Freigabe (Dateien und Ordner → Python → Schreibtisch). Nach dem Erlauben lief er sofort. Die Freigabe ist ohnehin nötig, weil der Dienst den Git-Stand der Repos auf dem Schreibtisch liest |
+| Die Freigabe gilt dem Homebrew-Python (`/opt/homebrew/Cellar/python@3.14/…/Python.app`), nicht 5C | `ps` des Dienstes | Nach einem Python-Upgrade fragt macOS vermutlich erneut (nicht gemessen) |
+| `kill -9` auf den Dienst: launchd startet ihn neu (`runs = 2`, neue pid), die API antwortet wieder mit 200 | `launchctl print` | `KeepAlive` plus `ThrottleInterval 10` reichen |
+| Der Dienst steuert iTerm2 selbst (Tab-Abgleich, Knopf „Nach vorn“) ohne weitere Abfrage | `POST /api/sessions/<id>/open`, `dienst.log` | |
+| Ein von Hand laufender `5c dienst` hielte Port 4555; der Agent liefe dann in Neustarts | Ablauf | `install.sh` bricht mit Hinweis ab |
