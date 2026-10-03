@@ -21,6 +21,20 @@ MUTATIONEN = [
      'glob("*.json")', 'glob("*")'),
     ("fehlender Ordner als kein Repo", "fivec/gitstand.py",
      'return {"art": "ordner_fehlt"}', 'return {"art": "kein_repo"}'),
+    ("Host-Prüfung weg", "fivec/dienst.py",
+     'return self.headers.get("Host", "") in', 'return True or self.headers.get("Host", "") in'),
+    ("Token-Prüfung weg", "fivec/dienst.py",
+     'return hmac.compare_digest(self.headers.get("X-5C-Token", ""), self.token)', "return True"),
+    ("Origin-Prüfung weg", "fivec/dienst.py",
+     "if origin is not None and origin not in", "if False and origin not in"),
+    ("unbekannte Session erlaubt", "fivec/dienst.py",
+     "if sid not in uebersicht.index_aktuell():", "if False:"),
+    ("Bidi-Zeichen erlaubt", "fivec/meta.py",
+     "if _VERBOTEN.search(text):", "if False:"),
+    ("Steuerzeichen erlaubt", "fivec/meta.py",
+     'if unicodedata.category(z) == "Cc" and', 'if False and'),
+    ("Längengrenze weg", "fivec/meta.py",
+     "if len(text) > maximal:", "if False:"),
 ]
 
 durch = 0

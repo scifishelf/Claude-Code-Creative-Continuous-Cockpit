@@ -1,0 +1,134 @@
+"""Lokaler Webserver: liefert die Seite und die JSON-API.
+
+Schutz (Plan, Abschnitt Sicherheit):
+- nur an 127.0.0.1 gebunden;
+- `Host` muss 127.0.0.1:<port> oder localhost:<port> sein (gegen DNS-Rebinding);
+- schreibende Aufrufe brauchen den Kopf `X-5C-Token` mit dem Token, das nur die
+  ausgelieferte Seite kennt, und ein fremder `Origin` wird abgewiesen.
+
+API:
+  GET   /api/sessions?stunden=48   (oder ?alle=1)
+  PATCH /api/sessions/<id>         {"name": …, "beschreibung": …}
+"""
+
+import hmac
+import json
+import secrets
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlsplit
+
+from . import meta, uebersicht
+
+PORT = 4555
+MAX_KOERPER = 16 * 1024
+
+SEITE = """<!doctype html>
+<html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="fivec-token" content="{token}">
+<title>5C</title></head>
+<body><p>5C läuft. Die Übersicht kommt in P3, die API liegt unter <code>/api/sessions</code>.</p></body></html>
+"""
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "5C"
+    token: str = ""
+    port: int = PORT
+
+    def log_message(self, *args):  # ruhig bleiben, der Dienst läuft unter launchd
+        pass
+
+    # --- Antworten ---------------------------------------------------------
+
+    def _senden(self, status: int, koerper: bytes, typ: str) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", typ)
+        self.send_header("Content-Length", str(len(koerper)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'")
+        self.end_headers()
+        self.wfile.write(koerper)
+
+    def _json(self, status: int, daten) -> None:
+        self._senden(status, json.dumps(daten, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+
+    def _fehler(self, status: int, text: str) -> None:
+        self._json(status, {"fehler": text})
+
+    # --- Prüfungen ---------------------------------------------------------
+
+    def _host_ok(self) -> bool:
+        return self.headers.get("Host", "") in (f"127.0.0.1:{self.port}", f"localhost:{self.port}")
+
+    def _schreiben_erlaubt(self) -> bool:
+        origin = self.headers.get("Origin")
+        if origin is not None and origin not in (f"http://127.0.0.1:{self.port}", f"http://localhost:{self.port}"):
+            return False
+        return hmac.compare_digest(self.headers.get("X-5C-Token", ""), self.token)
+
+    # --- Routen ------------------------------------------------------------
+
+    def do_GET(self):
+        if not self._host_ok():
+            return self._fehler(HTTPStatus.FORBIDDEN, "fremder Host")
+        url = urlsplit(self.path)
+        if url.path == "/":
+            return self._senden(HTTPStatus.OK, SEITE.format(token=self.token).encode(), "text/html; charset=utf-8")
+        if url.path == "/api/sessions":
+            q = parse_qs(url.query)
+            try:
+                stunden = None if q.get("alle") == ["1"] else float(q.get("stunden", ["48"])[0])
+            except ValueError:
+                return self._fehler(HTTPStatus.BAD_REQUEST, "stunden muss eine Zahl sein")
+            return self._json(HTTPStatus.OK, uebersicht.sessions(stunden))
+        self._fehler(HTTPStatus.NOT_FOUND, "nicht gefunden")
+
+    def do_PATCH(self):
+        if not self._host_ok():
+            return self._fehler(HTTPStatus.FORBIDDEN, "fremder Host")
+        if not self._schreiben_erlaubt():
+            return self._fehler(HTTPStatus.FORBIDDEN, "Token fehlt oder fremder Origin")
+        teile = urlsplit(self.path).path.strip("/").split("/")
+        if len(teile) != 3 or teile[:2] != ["api", "sessions"]:
+            return self._fehler(HTTPStatus.NOT_FOUND, "nicht gefunden")
+        sid = teile[2]
+        if not meta.UUID.match(sid):
+            return self._fehler(HTTPStatus.BAD_REQUEST, "keine gültige Session-ID")
+        if sid not in uebersicht.index_aktuell():
+            return self._fehler(HTTPStatus.NOT_FOUND, "Session unbekannt")
+        laenge = int(self.headers.get("Content-Length") or 0)
+        if laenge > MAX_KOERPER:
+            return self._fehler(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "zu groß")
+        try:
+            daten = json.loads(self.rfile.read(laenge) or b"{}")
+            if not isinstance(daten, dict):
+                raise ValueError
+        except ValueError:
+            return self._fehler(HTTPStatus.BAD_REQUEST, "kein JSON-Objekt")
+        try:
+            eintrag = meta.setzen(sid, daten)
+        except meta.Ungueltig as e:
+            return self._fehler(HTTPStatus.BAD_REQUEST, str(e))
+        self._json(HTTPStatus.OK, {"sid": sid, **eintrag})
+
+
+def server(port: int = PORT, token: str | None = None) -> ThreadingHTTPServer:
+    """Server bauen, nicht starten. Port 0 wählt einen freien Port (für Tests)."""
+    handler = type("FivecHandler", (Handler,), {"token": token or secrets.token_urlsafe(32)})
+    srv = ThreadingHTTPServer(("127.0.0.1", port), handler)
+    handler.port = srv.server_address[1]
+    return srv
+
+
+def starten(port: int = PORT) -> None:
+    srv = server(port)
+    print(f"5C läuft auf http://127.0.0.1:{srv.server_address[1]}/", flush=True)
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        srv.server_close()
