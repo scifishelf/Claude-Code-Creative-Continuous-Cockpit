@@ -9,7 +9,7 @@ Stand: 03.10.2026, Claude Code 2.1.288, iTerm2 3.7.3, macOS (Darwin 27.0.0). Gem
 | `claude-cli://` kann weder fortsetzen noch fokussieren | eigenes Schema `fivec://` bleibt |
 | `status` ist `idle` oder `busy`, `waitingFor` meldet Warten auf den Nutzer | Zustände „Arbeitet“ und „Wartet auf Dich“ direkt aus der Statusdatei |
 | Vor der Vertrauensfrage gibt es nur `.key`, keine `.json` | neuer Zustand „Startet“: `claude` am TTY, aber noch keine Statusdatei |
-| `kill -9` lässt `.json` liegen, SIGTERM räumt auf | „Verwaist“ = Datei da, Prozess tot oder `procStart` passt nicht |
+| `kill -9` lässt `.json` liegen, bis sie offenbar eine andere laufende Claude-Instanz aufräumt (gemessen: weg nach etwa 2 min); SIGTERM räumt sofort auf | „Verwaist“ = Datei da, Prozess tot oder `procStart` passt nicht. Der Zustand ist kurzlebig, 5C darf sich nicht darauf verlassen, dass er lange sichtbar ist |
 | `procStart` steht in **UTC**, `ps -o lstart` in **Ortszeit** | Vergleich nur nach Umrechnung, sonst gilt jede Session als verwaist |
 | `cwd` in der Statusdatei ist aufgelöst (`/private/tmp/…` statt `/tmp/…`) | Pfade vor jedem Vergleich mit `realpath` normalisieren |
 | Der abgeleitete `name` wechselt bei jedem Start (`5c-probe-03`, dann `5c-probe-6a`) | Namen nur aus 5C, wie in E4 entschieden |
@@ -34,7 +34,7 @@ Stand: 03.10.2026, Claude Code 2.1.288, iTerm2 3.7.3, macOS (Darwin 27.0.0). Gem
 | Weg | `.json` | `.key` | gemessen |
 |---|---|---|---|
 | SIGTERM (`kill -TERM`) | entfernt | entfernt | ja |
-| `kill -9` | **bleibt** | **bleibt** | ja (`9549.json` liegt seitdem in `~/.claude/sessions/`) |
+| `kill -9` | **bleibt** | **bleibt** | ja: `9549.json` lag nach dem Abschuss um 10:35 noch da, war um 10:37 weg. Aufgeräumt hat sehr wahrscheinlich die einzige andere laufende Claude-Instanz (pid 72366), 5C löscht nichts. Wer genau aufräumt, ist nicht belegt |
 | `/exit` | - | - | **offen (M2a)**, braucht eine Eingabe in die Session, siehe unten |
 | Ctrl-C (zweimal) | - | - | **offen (M2a)** |
 
@@ -87,6 +87,6 @@ Beides kann der Agent nicht selbst: Der Auto-Modus blockt, dass eine Claude-Sess
 
 ## Hinterlassenschaften der Messung
 
-- `~/.claude/sessions/9549.json` und `9549.*.key`: absichtlich verwaist (aus dem `kill -9`). Sie bleiben als Testfall für P5 liegen.
+- `~/.claude/sessions/9549.json` und `9549.*.key`: absichtlich verwaist (aus dem `kill -9`), um 10:37 von Claude selbst aufgeräumt. Für P5 wird ein Testfall künstlich angelegt (siehe `tests/test_live.py`).
 - `~/.claude/projects/-private-tmp-5c-probe/`: Verlauf der Test-Session.
 - `/tmp/5c-probe/`: leerer Testordner.
