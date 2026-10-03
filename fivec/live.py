@@ -1,6 +1,6 @@
 """Welche Sessions laufen gerade? Quelle: ~/.claude/sessions/<pid>.json.
 
-Gemessen am 03.10.2026 (docs/plans/2026-10-03-messungen-ist.md):
+Gemessen am 03.10.2026 (bis 8b14656 in docs/plans/2026-10-03-messungen-ist.md):
 - `kill -9` lässt die Statusdatei liegen, also reicht "Datei da" nicht.
 - Claude prüft selbst pid *und* Startzeit gegen `procStart`, um wiederverwendete
   PIDs zu erkennen. `procStart` steht in UTC, `ps -o lstart` liefert Ortszeit.

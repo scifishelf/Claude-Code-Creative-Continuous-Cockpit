@@ -6,9 +6,8 @@ Stand: 03.10.2026, `eb65018` auf `main`, gepusht nach `github.com:scifishelf/Cla
 
 | Frage | Datei |
 |---|---|
-| Bedienung, Einrichten, API, Gesundheit, Fortsetzen | [README.md](README.md) |
-| Plan V1, Phasen P0 bis P6, Entscheidungen E1 bis E8, Ideen für danach | [docs/plans/2026-10-03-5c-v1-plan.md](docs/plans/2026-10-03-5c-v1-plan.md) |
-| Messbefunde (Statusdateien, iTerm2, Titel, launchd, Schreibtisch-Freigabe, Mitteilung) | [docs/plans/2026-10-03-messungen-ist.md](docs/plans/2026-10-03-messungen-ist.md) |
+| Bedienung, Einrichten, API, Gesundheit, Fortsetzen, gemessene Grundlagen (Englisch) | [README.md](README.md) |
+| Plan V1 (Phasen, Entscheidungen E1 bis E8, Ideen) und Messbefunde: `docs/` ist seit dem 03.10. gelöscht | `git show 8b14656:docs/plans/2026-10-03-5c-v1-plan.md`, `git show 8b14656:docs/plans/2026-10-03-messungen-ist.md` |
 | Entwürfe der Oberfläche (Variante A gewählt) | Canvas https://claude.ai/artifact/1FVkuCvMRSmi3Y7RDKXbeS (privat) |
 
 ## Wo wir stehen
@@ -26,10 +25,10 @@ V1 ist abgeschlossen und in Nutzung: P0 bis P6, danach M1a (Statuswert `waiting`
 
 **Nicht abgestimmt.** Der Nutzer will 5C jetzt nutzen; Neues nur auf seinen Wunsch. Kandidaten, ohne Reihenfolge:
 
-1. **Klick auf die Mitteilung belegen** (Ist-Dokument, Nachtrag E7): Mitteilung anklicken, dann `5c.log` lesen. Fehlt `klick`, leitet macOS den Klick nicht an das Applet weiter. Der Nutzer hält Mitteilungen für nachrangig.
+1. **Klick auf die Mitteilung belegen** (Messbefunde in `8b14656`, Nachtrag E7): Mitteilung anklicken, dann `5c.log` lesen. Fehlt `klick`, leitet macOS den Klick nicht an das Applet weiter. Der Nutzer hält Mitteilungen für nachrangig.
 2. **5C.app über die API des Dienstes** statt über `bin/5c`: Dann fragt nicht mehr jeder Neubau die Schreibtisch-Freigabe ab.
 3. **M2a** (`/exit` und zweimal Ctrl-C, bleibt die Statusdatei liegen?): braucht eine Eingabe des Nutzers in eine Session.
-4. **Ideen aus dem Plan** (Abschnitt „Ideen für danach“).
+4. **Ideen aus dem Plan** (Abschnitt „Ideen für danach“, in `8b14656`).
 
 ## Was sofort zuschlägt
 
@@ -44,7 +43,7 @@ V1 ist abgeschlossen und in Nutzung: P0 bis P6, danach M1a (Statuswert `waiting`
 ## Arbeitsweise
 
 - Ein Posten, ein Commit, `./pruefen.sh` davor; Commit und Push nur nach Freigabe des Nutzers.
-- Messbefunde ins Ist-Dokument, Entscheidungen in den Plan; der Nutzer wird geduzt, Umlaute, keine Gedankenstriche.
+- `docs/` gibt es nicht mehr (Nutzerwunsch vom 03.10.): neue Messbefunde und Entscheidungen knapp ins README (Englisch), Arbeitsstand hierher; der Nutzer wird geduzt, Umlaute, keine Gedankenstriche.
 - UI-Änderungen: vorher Wortlaut und Gestaltung zur Auswahl vorlegen, danach Browserprobe (dunkel, hell, Handy) per Playwright aus `~/Desktop/coding/brandad-refold/oberflaeche/node_modules/@playwright/test`.
 - Keine externen Quellen zur Laufzeit (CSP `default-src 'self'`, Schriften lokal).
 

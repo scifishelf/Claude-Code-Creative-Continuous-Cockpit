@@ -1,6 +1,6 @@
 """iTerm2 per AppleScript: Session finden und nach vorn holen, Session starten.
 
-Gemessen in P0 (docs/plans/2026-10-03-messungen-ist.md, M4 und M5):
+Gemessen in P0 (bis 8b14656 in docs/plans/2026-10-03-messungen-ist.md, M4 und M5):
 - Sessions haben eine feste `unique ID` und ein `tty` (`/dev/ttys017`).
 - `select` auf Fenster, Tab und Session plus `activate` holt sie nach vorn.
 - Titel (`set name`) und Benutzervariablen (`set variable`) gehen live, ohne ins TTY

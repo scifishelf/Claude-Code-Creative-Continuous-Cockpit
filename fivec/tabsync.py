@@ -2,7 +2,7 @@
 
 Titel: Status-Emoji und Name (🟢 arbeitet, 🟡 wartet auf Dich, 🟠 hängt vielleicht, 🔵 startet).
 Badge: Name und erste Zeile der Beschreibung. Der Abgleich setzt auch das „Chat“ zurück,
-das iTerm2 beim Start von `claude` einmal vergibt (docs/plans/2026-10-03-messungen-ist.md, Nachtrag P4).
+das iTerm2 beim Start von `claude` einmal vergibt (Messung, bis 8b14656 in docs/plans/2026-10-03-messungen-ist.md, Nachtrag P4).
 Nur Sessions mit gemerkter iTerm2-ID (also von 5C gestartet, mit Profil 5C) werden angefasst.
 """
 

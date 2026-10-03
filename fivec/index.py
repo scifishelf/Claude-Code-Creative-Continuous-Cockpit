@@ -3,7 +3,7 @@
 Die Dateien sind zusammen gut 1 GB groß. Der Index merkt sich deshalb je Datei
 den Byte-Offset und liest beim nächsten Lauf nur das Angehängte. Maßgeblich für
 "letzte Aktivität" ist der letzte `timestamp` in der Datei, nicht die mtime
-(siehe docs/plans/2026-10-03-messungen-ist.md: alle mtimes können gleich sein).
+(Messung, bis 8b14656 in docs/plans/2026-10-03-messungen-ist.md: alle mtimes können gleich sein).
 """
 
 import json
