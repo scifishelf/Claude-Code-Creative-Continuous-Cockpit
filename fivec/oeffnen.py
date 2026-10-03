@@ -17,7 +17,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import iterm, live, meta, pfade, uebersicht
+from . import gesundheit, iterm, live, meta, pfade, prozesse, uebersicht
 
 SPERRE_S = 15
 URL = re.compile(r"^fivec://open/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/?$")
@@ -40,7 +40,7 @@ def _iterm_pfad() -> Path:
     return pfade.fivec_home() / "iterm.json"
 
 
-def _iterm_laden() -> dict:
+def iterm_gemerkt() -> dict:
     try:
         return json.loads(_iterm_pfad().read_text())
     except (OSError, ValueError):
@@ -48,7 +48,7 @@ def _iterm_laden() -> dict:
 
 
 def _iterm_merken(sid: str, uid: str, tty: str) -> None:
-    alles = _iterm_laden()
+    alles = iterm_gemerkt()
     alles[sid] = {"unique_id": uid, "tty": tty}
     pfad = _iterm_pfad()
     pfad.parent.mkdir(parents=True, exist_ok=True)
@@ -86,23 +86,8 @@ def sperre_nehmen(sid: str) -> bool:
 # --- In welcher App läuft ein Prozess? ---------------------------------------
 
 def app_von_prozess(pid: int) -> str | None:
-    """Erste `.app` in der Elternkette, z. B. `/Applications/iTerm.app`."""
-    for _ in range(30):
-        try:
-            aus = subprocess.run(["ps", "-o", "ppid=", "-o", "comm=", "-p", str(pid)],
-                                 capture_output=True, text=True, timeout=5)
-        except (OSError, subprocess.TimeoutExpired):
-            return None
-        zeile = aus.stdout.strip()
-        if aus.returncode != 0 or not zeile:
-            return None
-        ppid, _, befehl = zeile.partition(" ")
-        if ".app/" in befehl:
-            return befehl[: befehl.index(".app/") + 4]
-        pid = int(ppid)
-        if pid <= 1:
-            return None
-    return None
+    """Erste `.app` in der Elternkette, z. B. `/Applications/iTerm.app` (fivec/prozesse.py)."""
+    return prozesse.app_fuer(pid, prozesse.tabelle())
 
 
 def claude_am_tty(tty: str, sid: str) -> bool:
@@ -127,11 +112,12 @@ def startbefehl(cwd: str, sid: str) -> str:
     return f"cd {shlex.quote(cwd)} && caffeinate -dims claude --resume {shlex.quote(sid)}"
 
 
-def titel_und_badge(zeile: dict) -> tuple[str, str]:
+def name_und_badge(zeile: dict) -> tuple[str, str]:
+    """Name für den Tab-Titel (ohne Status-Emoji) und Badge-Text."""
     name = zeile.get("name") or f"{Path(zeile.get('cwd') or '?').name} {zeile['sid'][:8]}"
     beschreibung = (zeile.get("beschreibung") or "").split("\n")[0]
     badge = f"{name}\n{beschreibung}" if beschreibung else name
-    return f"🔵 {name}", badge
+    return name, badge
 
 
 # --- Ablauf ------------------------------------------------------------------
@@ -146,7 +132,7 @@ def oeffnen(sid: str, *, it=iterm, laufende=None, index=None, notizen=None,
         raise OeffnenFehler("Diese Session kennt 5C nicht")
     eintrag = idx[sid]
     laeufe = laufende if laufende is not None else live.laufende(pfade.claude_home())
-    gemerkt = _iterm_laden().get(sid, {})
+    gemerkt = iterm_gemerkt().get(sid, {})
     lauf = laeufe.get(sid)
 
     if lauf and lauf["zustand"] == "läuft":
@@ -172,9 +158,9 @@ def oeffnen(sid: str, *, it=iterm, laufende=None, index=None, notizen=None,
         return {"ergebnis": "startet", "text": "Die Session startet gerade."}
 
     zeile = {**eintrag, **(notizen if notizen is not None else meta.laden()).get(sid, {})}
-    titel, badge = titel_und_badge(zeile)
+    name, badge = name_und_badge(zeile)
     try:
-        uid, tty = it.starten(startbefehl(cwd, sid), titel, badge)
+        uid, tty = it.starten(startbefehl(cwd, sid), f"{gesundheit.EMOJI['startet']} {name}", badge)
     except Exception:
         _sperre(sid).unlink(missing_ok=True)  # ein gescheiterter Start darf den nächsten Versuch nicht sperren
         raise

@@ -4,7 +4,7 @@
 
 import {
   aktion, anzeigeName, aufteilen, gitText, zeitAbsolut, zeitRelativ,
-  ZEITRAEUME, zusammenfassung, zustandKlasse,
+  ZEITRAEUME, zusammenfassung, zustandDetail, zustandHinweis, zustandKlasse,
 } from "./logik.js";
 
 const TAKT_MS = 2000;
@@ -87,9 +87,15 @@ function zeile(z) {
   const reihe = el("div", bearbeiten ? "zeile bearbeiten" : "zeile");
   reihe.dataset.sid = z.sid;
 
+  const zelle = el("div", "zustand-zelle");
   const zk = el("div", `zustand z-${zustandKlasse(z.zustand)}`);
   zk.append(el("span", "marker"), el("span", "", z.zustand));
-  reihe.append(zk);
+  zelle.append(zk);
+  const detail = zustandDetail(z);
+  if (detail) zelle.append(el("div", "zustand-detail", detail));
+  const hinweis = zustandHinweis(z);
+  if (hinweis) zelle.title = hinweis;
+  reihe.append(zelle);
 
   reihe.append(bearbeiten ? formular(z) : nameZelle(z));
 

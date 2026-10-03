@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  aktion, anzeigeName, aufteilen, gitText, passtZurSuche, zeitRelativ, zusammenfassung, zustandKlasse,
+  aktion, anzeigeName, aufteilen, gitText, passtZurSuche, zeitRelativ, zusammenfassung, zustandDetail,
+  zustandHinweis, zustandKlasse,
 } from "../../fivec/web/logik.js";
 
 const jetzt = new Date(2026, 9, 3, 10, 50, 0); // 03.10.2026 10:50 Ortszeit
@@ -38,11 +39,11 @@ test("Name fällt auf den ersten Prompt zurück", () => {
 });
 
 test("Suche über Name, Beschreibung, Pfad, ID und Prompts, alle Wörter müssen passen", () => {
-  const z = { name: "Kundenportal P9", beschreibung: "Rollout", cwd: "/Users/a/refold", sid: "53f41c24-x", erste_prompts: ["Stripe-Plan"] };
-  assert.ok(passtZurSuche(z, "telekom"));
-  assert.ok(passtZurSuche(z, "refold stripe"));
+  const z = { name: "Kundenportal P9", beschreibung: "Auslieferung", cwd: "/Users/a/refold", sid: "53f41c24-x", erste_prompts: ["Zahlungsplan"] };
+  assert.ok(passtZurSuche(z, "kundenportal"));
+  assert.ok(passtZurSuche(z, "refold zahlungsplan"));
   assert.ok(passtZurSuche(z, "53f41c24"));
-  assert.ok(!passtZurSuche(z, "telekom bioclip"));
+  assert.ok(!passtZurSuche(z, "kundenportal bioclip"));
   assert.ok(passtZurSuche(z, "   "));
 });
 
@@ -72,6 +73,19 @@ test("Aktion je Zustand", () => {
   const fehlt = aktion({ lauf: null, git: { art: "ordner_fehlt" } });
   assert.equal(fehlt.text, "Ordner fehlt");
   assert.equal(fehlt.gesperrt, true);
+});
+
+test("aktiv vom Dienst hat Vorrang (startet ohne Statusdatei)", () => {
+  assert.equal(aufteilen([{ sid: "s", aktiv: true, lauf: null, zustand: "startet" }]).laufend.length, 1);
+  assert.equal(aufteilen([{ sid: "s", aktiv: false, lauf: { zustand: "läuft" }, zustand: "ruht" }]).laufend.length, 0);
+});
+
+test("zweite Zeile unter dem Zustand", () => {
+  assert.equal(zustandDetail({ zustand: "hängt vielleicht", still_s: 845 }), "seit 14 Min. keine Ausgabe");
+  assert.equal(zustandDetail({ zustand: "startet" }), "noch ohne Statusdatei");
+  assert.equal(zustandDetail({ zustand: "arbeitet", prozess: { app: "iTerm", cpu: 2.6, speicher_mb: 348 } }), "iTerm, 3 % CPU, 348 MB");
+  assert.equal(zustandDetail({ zustand: "ruht", prozess: null }), "");
+  assert.equal(zustandHinweis({ prozess: { laufzeit: "06:32", caffeinate: true } }), "läuft seit 06:32, caffeinate aktiv");
 });
 
 test("unbekannter Zustand bekommt keine Warnfarbe", () => {

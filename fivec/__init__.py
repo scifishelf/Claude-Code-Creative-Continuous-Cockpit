@@ -1,1 +1,1 @@
-"""5C - Claude Code Creative Continue Cockpit."""
+"""5C - Claude Code Creative Continuous Cockpit."""

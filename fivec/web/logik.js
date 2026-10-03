@@ -38,7 +38,26 @@ export function gitText(git) {
 }
 
 export function laeuft(zeile) {
+  if (typeof zeile.aktiv === "boolean") return zeile.aktiv;
   return Boolean(zeile.lauf && zeile.lauf.zustand === "läuft");
+}
+
+// Zweite Zeile unter dem Zustand: bei "hängt vielleicht" die stille Zeit, sonst App, CPU, Speicher.
+export function zustandDetail(zeile) {
+  if (zeile.zustand === "hängt vielleicht" && zeile.still_s != null) {
+    return `seit ${Math.floor(zeile.still_s / 60)} Min. keine Ausgabe`;
+  }
+  if (zeile.zustand === "startet") return "noch ohne Statusdatei";
+  const p = zeile.prozess;
+  if (!p) return "";
+  const cpu = `${Math.round(p.cpu)} % CPU`;
+  return [p.app, cpu, `${p.speicher_mb} MB`].filter(Boolean).join(", ");
+}
+
+export function zustandHinweis(zeile) {
+  const p = zeile.prozess;
+  if (!p) return "";
+  return `läuft seit ${p.laufzeit}, caffeinate ${p.caffeinate ? "aktiv" : "nicht aktiv"}`;
 }
 
 // CSS-Klasse je Zustand. Unbekanntes fällt auf "ruht" zurück, nie auf eine Warnfarbe.

@@ -47,7 +47,7 @@ def _tabelle(zeilen: list[dict]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="5c", description="Claude Code Creative Continue Cockpit")
+    parser = argparse.ArgumentParser(prog="5c", description="Claude Code Creative Continuous Cockpit")
     sub = parser.add_subparsers(dest="befehl", required=True)
     ls = sub.add_parser("list", help="Sessions auflisten")
     ls.add_argument("--stunden", type=float, default=48, help="nur Sessions mit Aktivität in diesem Zeitraum (Standard 48)")

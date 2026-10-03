@@ -156,6 +156,50 @@ end run
 """
 
 
+_ABGLEICH = """
+on run argv
+  if application "iTerm2" is not running then return 0
+  set geaendert to 0
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          set uid to unique ID of s
+          repeat with i from 1 to (count of argv) by 3
+            if item i of argv is uid then
+              tell s
+                if name is not (item (i + 1) of argv) then
+                  set name to item (i + 1) of argv
+                  set geaendert to geaendert + 1
+                end if
+                if (variable named "user.fivec_badge") is not (item (i + 2) of argv) then
+                  set variable named "user.fivec_badge" to item (i + 2) of argv
+                  set geaendert to geaendert + 1
+                end if
+              end tell
+            end if
+          end repeat
+        end repeat
+      end repeat
+    end repeat
+  end tell
+  return geaendert
+end run
+"""
+
+
+def abgleichen(soll: list[tuple[str, str, str]]) -> int:
+    """Titel und Badge vieler Sessions in EINEM osascript-Aufruf; setzt nur, was abweicht.
+    soll: [(unique ID, Titel, Badge), …] -> Anzahl geänderter Werte."""
+    if not soll:
+        return 0
+    argumente = [wert for eintrag in soll for wert in eintrag]
+    try:
+        return int(_osa(_ABGLEICH, *argumente) or 0)
+    except ValueError:
+        return 0
+
+
 def tty_voll(tty: str | None) -> str:
     """`ps` liefert `ttys017`, iTerm2 `/dev/ttys017`."""
     if not tty:

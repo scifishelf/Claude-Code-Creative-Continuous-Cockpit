@@ -15,12 +15,13 @@ API:
 import hmac
 import json
 import secrets
+import threading
 from http import HTTPStatus
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from . import iterm, meta, oeffnen, uebersicht
+from . import iterm, meta, oeffnen, tabsync, uebersicht
 
 PORT = 4555
 MAX_KOERPER = 16 * 1024
@@ -150,10 +151,13 @@ def server(port: int = PORT, token: str | None = None) -> ThreadingHTTPServer:
 
 def starten(port: int = PORT) -> None:
     srv = server(port)
+    stopp = threading.Event()
+    tabsync.starten(stopp, protokoll=lambda text: print(text, flush=True))
     print(f"5C läuft auf http://127.0.0.1:{srv.server_address[1]}/", flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
+        stopp.set()
         srv.server_close()

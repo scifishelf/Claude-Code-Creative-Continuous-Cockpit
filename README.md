@@ -1,8 +1,8 @@
-# 5C - Claude Code Creative Continue Cockpit
+# 5C - Claude Code Creative Continuous Cockpit
 
 Übersicht aller Claude-Code-Sessions auf diesem Mac: Fortsetzen per Klick in iTerm2, Status live, eigene Namen und Beschreibungen. Plan und Stand: [docs/plans/2026-10-03-5c-v1-plan.md](docs/plans/2026-10-03-5c-v1-plan.md), Messungen: [docs/plans/2026-10-03-messungen-ist.md](docs/plans/2026-10-03-messungen-ist.md).
 
-## Stand: P4
+## Stand: P5
 
 ```sh
 bin/5c dienst               # Übersicht auf http://127.0.0.1:4555/
@@ -25,6 +25,19 @@ python3 werkzeug/mutationen.py   # Gegenprobe: eingebaute Fehler müssen die Tes
 `fivec/web/`: `index.html`, `app.css`, `app.js` (DOM und API), `logik.js` (reine Funktionen, mit `node --test` getestet), `logo.svg`, `schriften/` (Geist und Geist Mono, SIL OFL, lokal ausgeliefert). Kein Build-Schritt, keine Abhängigkeit, keine externe Quelle: die CSP ist `default-src 'self'`, Tests verbieten externe URLs, Inline-Styles und HTML-Einfügen von Text.
 
 Aktualisiert sich alle 2 s (nicht im Hintergrund-Tab). Klick auf den Namen öffnet die Bearbeitung: Enter speichert, Esc bricht ab, Cmd+Enter speichert aus der Beschreibung.
+
+## Gesundheit
+
+| Zustand | Bedingung | Tab-Titel |
+|---|---|---|
+| arbeitet | läuft, `status: busy` | 🟢 |
+| wartet auf Dich | läuft, `status: idle` oder `waitingFor` gesetzt | 🟡 |
+| hängt vielleicht | seit über 10 Min. `busy` **und** seit über 10 Min. keine neue Zeile im Verlauf | 🟠 |
+| startet | `claude --resume <id>` läuft, aber noch ohne Statusdatei | 🔵 |
+| verwaist | Statusdatei da, Prozess tot oder Startzeit passt nicht | |
+| ruht | sonst | |
+
+Ein `ps`-Aufruf je Takt liefert Lebendprüfung, CPU, Speicher, Laufzeit, App (erste `.app` in der Elternkette) und `caffeinate` (`fivec/prozesse.py`, `fivec/gesundheit.py`). Der Dienst hält Titel und Badge der von 5C gestarteten iTerm2-Tabs auf Stand (`fivec/tabsync.py`): `osascript` nur bei geändertem Soll, sonst höchstens alle 10 s als Nachkontrolle (ein Abgleich kostet gemessen rund 280 ms).
 
 ## Fortsetzen und nach vorn holen
 

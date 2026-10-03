@@ -1,7 +1,8 @@
-"""Index, Laufzeitstand, Git-Stand und 5C-Metadaten zu einer Liste zusammenführen.
+"""Index, Laufzeitstand, Gesundheit, Git-Stand und 5C-Metadaten zu einer Liste zusammenführen.
 
 Wird von `5c list` und vom Dienst geteilt. Ein Lock hält parallele Anfragen des
-Dienstes davon ab, den Index-Cache gleichzeitig zu schreiben.
+Dienstes davon ab, den Index-Cache gleichzeitig zu schreiben. Je Aufruf gibt es
+genau einen `ps`-Aufruf (fivec/prozesse.py).
 """
 
 import threading
@@ -9,7 +10,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import gitstand, index, live, meta, pfade
+from . import gesundheit, gitstand, index, live, meta, pfade, prozesse
 
 GIT_TTL = 10.0
 
@@ -33,16 +34,6 @@ def kurz_pfad(cwd: str | None) -> str:
     return "~" + cwd[len(heim):] if cwd == heim or cwd.startswith(heim + "/") else cwd
 
 
-def zustand_text(lauf: dict | None) -> str:
-    if lauf is None:
-        return "ruht"
-    if lauf["zustand"] != "läuft":
-        return "verwaist"
-    if lauf.get("waitingFor"):
-        return "wartet auf Dich"
-    return {"busy": "arbeitet", "idle": "wartet auf Dich"}.get(lauf.get("status"), "läuft")
-
-
 def _git(cwd: str | None) -> dict:
     jetzt = time.monotonic()
     treffer = _git_cache.get(cwd)
@@ -58,19 +49,25 @@ def index_aktuell() -> dict:
         return index.aktualisieren(pfade.claude_home(), pfade.fivec_home() / "index.json")
 
 
-def sessions(stunden: float | None) -> list[dict]:
-    """Neueste zuerst. Laufende Sessions stehen immer drin, auch außerhalb des Zeitraums."""
+def sessions(stunden: float | None, tab: dict | None = None) -> list[dict]:
+    """Neueste zuerst. Laufende und startende Sessions stehen immer drin, auch außerhalb des Zeitraums."""
     with _lock:
+        tab = prozesse.tabelle() if tab is None else tab
         idx = index.aktualisieren(pfade.claude_home(), pfade.fivec_home() / "index.json")
-        laeufe = live.laufende(pfade.claude_home())
+        laeufe = live.laufende(pfade.claude_home(), prozess=prozesse.info_von(tab))
+        startend = prozesse.startende(tab)
         notizen = meta.laden()
-        grenze = None if stunden is None else datetime.now(timezone.utc) - timedelta(hours=stunden)
+        jetzt = datetime.now(timezone.utc)
+        grenze = None if stunden is None else jetzt - timedelta(hours=stunden)
         zeilen = []
         for sid, e in idx.items():
             lauf = laeufe.get(sid)
+            g = gesundheit.bewerten(lauf, sid in startend, e["letzter"], jetzt)
+            aktiv = g["zustand"] not in ("ruht", "verwaist")
             letzte = zeit(e["letzter"])
-            if grenze is not None and lauf is None and (letzte is None or letzte < grenze):
+            if grenze is not None and not aktiv and lauf is None and (letzte is None or letzte < grenze):
                 continue
+            pid = lauf["pid"] if lauf and lauf["zustand"] == "läuft" else startend.get(sid)
             cwd = e["cwd"] or (lauf or {}).get("cwd")
             notiz = notizen.get(sid, {})
             zeilen.append({
@@ -80,7 +77,10 @@ def sessions(stunden: float | None) -> list[dict]:
                 "name": notiz.get("name", ""),
                 "beschreibung": notiz.get("beschreibung", ""),
                 "lauf": lauf,
-                "zustand": zustand_text(lauf),
+                "aktiv": aktiv,
+                "zustand": g["zustand"],
+                "still_s": g["still_s"],
+                "prozess": prozesse.kennzahlen(pid, tab) if aktiv and pid else None,
                 "git": _git(cwd),
             })
     zeilen.sort(key=lambda z: z["letzter"] or "", reverse=True)
