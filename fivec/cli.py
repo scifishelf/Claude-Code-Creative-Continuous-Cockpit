@@ -3,8 +3,20 @@
 import argparse
 import json
 import sys
+from datetime import datetime
 
-from . import dienst, uebersicht
+from . import dienst, iterm, oeffnen, pfade, uebersicht
+
+
+def _protokoll(zeile: str) -> None:
+    """Aufrufe aus 5C.app und launchd haben kein Terminal; ihre Spur steht hier."""
+    pfad = pfade.fivec_home() / "5c.log"
+    try:
+        pfad.parent.mkdir(parents=True, exist_ok=True)
+        with open(pfad, "a") as f:
+            f.write(f"{datetime.now().isoformat(timespec='seconds')} {zeile}\n")
+    except OSError:
+        pass
 
 
 def _git_text(git: dict) -> str:
@@ -43,11 +55,25 @@ def main(argv: list[str] | None = None) -> int:
     ls.add_argument("--json", action="store_true", help="als JSON ausgeben")
     ds = sub.add_parser("dienst", help="lokalen Webserver starten")
     ds.add_argument("--port", type=int, default=dienst.PORT)
+    op = sub.add_parser("open", help="Session nach vorn holen oder in iTerm2 fortsetzen")
+    op.add_argument("sid")
+    ou = sub.add_parser("open-url", help="wie open, für fivec://open/<id> (5C.app)")
+    ou.add_argument("url")
     args = parser.parse_args(argv)
 
     if args.befehl == "dienst":
         dienst.starten(args.port)
         return 0
+    if args.befehl in ("open", "open-url"):
+        ziel = args.sid if args.befehl == "open" else args.url
+        try:
+            sid = ziel if args.befehl == "open" else oeffnen.sid_aus_url(ziel)
+            text, code = oeffnen.oeffnen(sid)["text"], 0
+        except (oeffnen.OeffnenFehler, iterm.ItermFehler) as e:
+            text, code = str(e), 1
+        _protokoll(f"{args.befehl} {ziel!r}: {text}")
+        print(text)
+        return code
     zeilen = uebersicht.sessions(None if args.alle else args.stunden)
     if args.json:
         json.dump(zeilen, sys.stdout, ensure_ascii=False, indent=1)

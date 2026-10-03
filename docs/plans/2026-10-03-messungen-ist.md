@@ -90,3 +90,17 @@ Beides kann der Agent nicht selbst: Der Auto-Modus blockt, dass eine Claude-Sess
 - `~/.claude/sessions/9549.json` und `9549.*.key`: absichtlich verwaist (aus dem `kill -9`), um 10:37 von Claude selbst aufgeräumt. Für P5 wird ein Testfall künstlich angelegt (siehe `tests/test_live.py`).
 - `~/.claude/projects/-private-tmp-5c-probe/`: Verlauf der Test-Session.
 - `/tmp/5c-probe/`: leerer Testordner.
+
+## Nachtrag P4 (03.10.2026): Befunde beim Bau von „Fortsetzen“ und „Nach vorn“
+
+| Befund | Fundstelle | Folge |
+|---|---|---|
+| Claude Code setzt per Steuersequenz einen eigenen Tab-Titel („✳ probe.txt erstellen“) und überschreibt damit `set name` | Titel der Test-Session nach `5c open` | 5C startet mit eigenem dynamischem Profil „5C“: `Allow Title Setting: false`, `Title Components: 1` (nur Session-Name), `Badge Text: \(user.fivec_badge)`. Angelegt von `fivec/iterm.py` unter `~/Library/Application Support/iTerm2/DynamicProfiles/5c.json` |
+| Gegenprobe: Mit dem Profil kommt ein `printf "\033]0;UEBERSCHRIEBEN\007"` nicht mehr an, ein Wechsel `🟢` → `🟡` per `set name` schon | Testfenster mit `sleep` | E5 (Status-Emoji im Titel) ist umsetzbar |
+| Trotz Profil steht nach dem Start von `claude` einmal „Chat“ im Titel: `session.name` = `session.autoName` = „Chat“, `terminalWindowName` leer. Wer es setzt, ist nicht belegt; es ist keine Steuersequenz | `osascript`, Variablen der Session | Ein danach gesetzter Titel hält (nach 12 s gemessen). Der Dienst zieht den Titel in P5 bei jedem Zustandswechsel nach |
+| `AppleScript` kann den Tab-Titel (`title of tab`) nicht setzen: Fehler `-10000` | `set title of t` | nur `set name` auf der Session |
+| `/usr/bin/python3` ist 3.9 und kann den Code nicht ausführen (`str \| None`); der PATH eines Applets ist minimal | `python3 --version` | `werkzeug/app_bauen.sh` trägt das Python des Baus fest ein (`/opt/homebrew/bin/python3`) und bricht unter 3.10 ab |
+| `osacompile` trägt englische Begründungstexte ein; ein `Add` auf `NSAppleEventsUsageDescription` scheitert still | `plutil -p` | Bauskript setzt den deutschen Text per `Set` |
+| Der erste `fivec://`-Klick löst „5C möchte iTerm steuern“ aus; solange die Abfrage offen ist, passiert sichtbar nichts. Danach geht es | `5c.log`, vordere App | `install.sh` (P6) kündigt die Abfrage an |
+| Zwei schnelle Klicks könnten in zwei Server-Threads oder in App und Dienst gleichzeitig „keine Sperre“ sehen | Code-Durchsicht | Startsperre atomar per `O_EXCL`; Test mit 5 parallelen Aufrufen, genau ein Start |
+| Ein Start kann länger als die 15-s-Sperre dauern (z. B. offene Vertrauensfrage) | Ablauf | Zusätzlich: Läuft am gemerkten TTY schon `claude --resume <id>`, wird nicht erneut gestartet |

@@ -3,7 +3,7 @@
 // Beschreibung per PATCH. Während einer Bearbeitung wird nicht neu gezeichnet.
 
 import {
-  aktion, anzeigeName, aufteilen, gitText, laeuft, zeitAbsolut, zeitRelativ,
+  aktion, anzeigeName, aufteilen, gitText, zeitAbsolut, zeitRelativ,
   ZEITRAEUME, zusammenfassung, zustandKlasse,
 } from "./logik.js";
 
@@ -119,7 +119,7 @@ function zeile(z) {
     knopf.type = "button";
     knopf.disabled = a.gesperrt;
     if (a.gesperrt) knopf.title = "Der Ordner dieser Session existiert nicht mehr";
-    knopf.addEventListener("click", () => oeffnen(z));
+    knopf.addEventListener("click", () => oeffnen(z, knopf));
     reihe.append(knopf);
   }
   return reihe;
@@ -222,11 +222,21 @@ async function speichernAnDienst(sid, daten, fehlerFeld) {
   }
 }
 
-function oeffnen(z) {
-  // Kommt mit P4: fivec://open/<id> holt den Tab nach vorn oder setzt die Session fort.
-  meldung(laeuft(z)
-    ? "Nach vorn holen kommt mit P4."
-    : "Fortsetzen kommt mit P4.");
+async function oeffnen(z, knopf) {
+  knopf.disabled = true;
+  try {
+    const antwort = await fetch(`/api/sessions/${encodeURIComponent(z.sid)}/open`, {
+      method: "POST",
+      headers: { "X-5C-Token": TOKEN },
+    });
+    const inhalt = await antwort.json().catch(() => ({}));
+    meldung(antwort.ok ? inhalt.text : (inhalt.fehler || `Fehlgeschlagen (HTTP ${antwort.status})`), !antwort.ok);
+  } catch {
+    meldung("Der 5C-Dienst antwortet nicht.", true);
+  } finally {
+    knopf.disabled = false;
+    laden();
+  }
 }
 
 // --- Bedienung ----------------------------------------------------------

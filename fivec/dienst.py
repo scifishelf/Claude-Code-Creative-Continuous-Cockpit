@@ -9,6 +9,7 @@ Schutz (Plan, Abschnitt Sicherheit):
 API:
   GET   /api/sessions?stunden=48   (oder ?alle=1)
   PATCH /api/sessions/<id>         {"name": …, "beschreibung": …}
+  POST  /api/sessions/<id>/open    nach vorn holen oder in iTerm2 fortsetzen (fivec/oeffnen.py)
 """
 
 import hmac
@@ -19,7 +20,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-from . import meta, uebersicht
+from . import iterm, meta, oeffnen, uebersicht
 
 PORT = 4555
 MAX_KOERPER = 16 * 1024
@@ -123,6 +124,20 @@ class Handler(BaseHTTPRequestHandler):
         except meta.Ungueltig as e:
             return self._fehler(HTTPStatus.BAD_REQUEST, str(e))
         self._json(HTTPStatus.OK, {"sid": sid, **eintrag})
+
+    def do_POST(self):
+        if not self._host_ok():
+            return self._fehler(HTTPStatus.FORBIDDEN, "fremder Host")
+        if not self._schreiben_erlaubt():
+            return self._fehler(HTTPStatus.FORBIDDEN, "Token fehlt oder fremder Origin")
+        teile = urlsplit(self.path).path.strip("/").split("/")
+        if len(teile) != 4 or teile[:2] != ["api", "sessions"] or teile[3] != "open":
+            return self._fehler(HTTPStatus.NOT_FOUND, "nicht gefunden")
+        try:
+            ergebnis = oeffnen.oeffnen(teile[2])
+        except (oeffnen.OeffnenFehler, iterm.ItermFehler) as e:
+            return self._fehler(HTTPStatus.CONFLICT, str(e))
+        self._json(HTTPStatus.OK, ergebnis)
 
 
 def server(port: int = PORT, token: str | None = None) -> ThreadingHTTPServer:
