@@ -1,6 +1,6 @@
 # Handoff 5C - Claude Code Creative Continuous Cockpit
 
-Stand: 03.10.2026, `db8d432` auf `main`. Gepusht ist nur bis `0d77ef5` (`github.com:scifishelf/Claude-Code-Creative-Continuous-Cockpit`, **öffentlich**); M1a und E7 sind lokal.
+Stand: 03.10.2026, `eb65018` auf `main`, gepusht nach `github.com:scifishelf/Claude-Code-Creative-Continuous-Cockpit` (**öffentlich**).
 
 ## Wo was steht
 
