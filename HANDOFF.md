@@ -30,7 +30,6 @@ V1 ist abgeschlossen und in Nutzung: P0 bis P6, danach M1a (Statuswert `waiting`
 2. **5C.app über die API des Dienstes** statt über `bin/5c`: Dann fragt nicht mehr jeder Neubau die Schreibtisch-Freigabe ab.
 3. **M2a** (`/exit` und zweimal Ctrl-C, bleibt die Statusdatei liegen?): braucht eine Eingabe des Nutzers in eine Session.
 4. **Ideen aus dem Plan** (Abschnitt „Ideen für danach“).
-5. **Alte Testdaten in der Git-Historie** (P3, P4): nur per Umschreiben der Historie und Force-Push, nur auf ausdrücklichen Wunsch.
 
 ## Was sofort zuschlägt
 
