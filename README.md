@@ -1,85 +1,114 @@
 # 5C - Claude Code Creative Continuous Cockpit
 
-Übersicht aller Claude-Code-Sessions auf diesem Mac: Fortsetzen per Klick in iTerm2, Status live, eigene Namen und Beschreibungen. Plan und Stand: [docs/plans/2026-10-03-5c-v1-plan.md](docs/plans/2026-10-03-5c-v1-plan.md), Messungen: [docs/plans/2026-10-03-messungen-ist.md](docs/plans/2026-10-03-messungen-ist.md).
+A local dashboard for every Claude Code session on your Mac. See at a glance which sessions are working, waiting for you or possibly stuck, resume any session in iTerm2 with one click, and give sessions your own names and descriptions. Those names also show up as the iTerm2 tab title and badge.
 
-## Einrichten
+Everything runs locally: a small Python service with no dependencies, a static web page and an AppleScript app for the `fivec://` URL scheme. The UI is in German.
 
-Voraussetzungen: macOS, iTerm2, Python ab 3.10 (Homebrew), Node für die Prüfkette, Claude Code.
+## Features
+
+- **Overview** of all sessions from `~/.claude/projects`, **grouped by project** (working directory). Groups with running sessions come first, and the rest are sorted by last activity. Groups can be collapsed, but a collapsed group still shows its running sessions.
+- **Live health** for every running session, refreshed every 2 s: working, waiting for you, possibly stuck, starting, orphaned, idle. Also shows CPU, memory, uptime, the host app (iTerm2, Cursor, …) and whether `caffeinate` is active.
+- **One click to resume:** a running session's iTerm2 tab is brought to the front, or the host app is activated if it runs elsewhere. A stopped session is resumed in a new iTerm2 window with `caffeinate -dims claude --resume <id>`. Double starts are prevented.
+- **Names and descriptions** per session, edited inline and stored by 5C only. The iTerm2 tab shows them as title and badge, prefixed by a status emoji (🟢 working, 🟡 waiting, 🟠 possibly stuck, 🔵 starting).
+- **Notifications** when a session switches from working to waiting: "needs your permission", "needs your answer" or "done".
+- **Hide** sessions or whole projects, with undo. Running sessions always stay visible.
+- **Git status** of each working directory (uncommitted changes, last commit).
+
+## Requirements
+
+macOS, [iTerm2](https://iterm2.com), Python 3.10 or newer (Homebrew), Claude Code, and Node.js for the test suite.
+
+## Install
 
 ```sh
-./install.sh      # 5C.app (fivec://), iTerm2-Profil „5C“, Dienst als launchd-Agent (Login, Neustart nach Absturz)
-./uninstall.sh    # alles wieder weg; --alles löscht auch Namen, Beschreibungen und Logs
+./install.sh      # builds 5C.app (fivec://), the iTerm2 profile "5C" and a launchd agent for the service
+./uninstall.sh    # removes all of it; --alles also deletes names, descriptions and logs
 ```
 
-Danach: http://127.0.0.1:4555/ oder 5C.app doppelklicken. Drei macOS-Abfragen beim ersten Mal, alle erlauben:
-1. **Python → Schreibtisch** (Dateien und Ordner), wenn das Repo dort liegt: sonst startet der Dienst nicht und lauscht nicht. Der Dienst liest außerdem den Git-Stand der Repos dort.
-   Dasselbe für **5C → Schreibtisch**, beim ersten `fivec://`-Link oder der ersten Mitteilung, und nach jedem Neubau der App erneut.
-2. **5C → iTerm** (Automation), beim ersten Klick auf einen `fivec://`-Link.
-3. **Python → iTerm** (Automation), beim ersten „Fortsetzen“ oder „Nach vorn“ auf der Seite.
+Then open http://127.0.0.1:4555/, or double-click `~/Applications/5C.app`.
 
-Logs: `~/Library/Logs/5C/dienst.log`, Aufrufe der App: `~/Library/Application Support/5C/5c.log`.
+macOS asks for a few permissions the first time. Allow all of them:
 
-## Stand: V1 (P0 bis P6)
+1. **Python → Desktop** (Files and Folders), if the repo lives on the Desktop. Without it the service starts but never listens. The service also reads the Git status of repos there.
+2. **5C → Desktop**, on the first `fivec://` link or notification. macOS asks again **after every rebuild of 5C.app**, because the ad-hoc signature changes. Until you allow it, neither links nor notifications get through.
+3. **5C → iTerm** (Automation), on the first `fivec://` link.
+4. **Python → iTerm** (Automation), on the first "Fortsetzen" (resume) or "Nach vorn" (bring to front) on the page.
+
+Logs: `~/Library/Logs/5C/dienst.log` (service) and `~/Library/Application Support/5C/5c.log` (app calls, notifications, clicks).
+
+## Command line
 
 ```sh
-bin/5c dienst               # Übersicht auf http://127.0.0.1:4555/ (läuft nach install.sh per launchd)
-bin/5c open <session-id>    # nach vorn holen, sonst in iTerm2 fortsetzen
-bin/5c klick                # zuletzt gemeldete Session nach vorn, sonst 'seite' (für 5C.app)
-werkzeug/app_bauen.sh       # baut ~/Applications/5C.app, registriert fivec://open/<session-id>
-bin/5c list                 # Sessions mit Aktivität in den letzten 48 h, neueste zuerst
-bin/5c list --stunden 240   # anderer Zeitraum
-bin/5c list --alle --json   # alles, maschinenlesbar
-./pruefen.sh                # Syntax und Tests, vor jedem Commit
-python3 werkzeug/mutationen.py   # Gegenprobe: eingebaute Fehler müssen die Tests fangen
+bin/5c dienst               # the service on http://127.0.0.1:4555/ (runs via launchd after install.sh)
+bin/5c list                 # sessions active in the last 48 h, newest first
+bin/5c list --stunden 240   # another time window
+bin/5c list --alle --json   # everything, machine-readable
+bin/5c open <session-id>    # bring to front, otherwise resume in iTerm2
+bin/5c klick                # bring the last notified session to front (used by 5C.app)
+werkzeug/app_bauen.sh       # rebuild ~/Applications/5C.app and register fivec://
 ```
 
-- Python 3 ohne Abhängigkeiten.
-- Liest `~/.claude/projects/*/*.jsonl` (inkrementell, Cache in `~/Library/Application Support/5C/index.json`) und `~/.claude/sessions/*.json`. Die `.key`-Dateien daneben liest 5C nie.
-- Schreibt nur in den eigenen Ordner `~/Library/Application Support/5C/`, nie in `~/.claude`.
-- Für Tests lassen sich beide Orte per `CLAUDE_HOME` und `FIVEC_HOME` umlenken.
+After a code change, restart the service: `launchctl kickstart -k gui/$(id -u)/dev.fivec.cockpit.dienst`. Port 4555 belongs to the launchd agent, so a second `bin/5c dienst` needs `--port`.
 
-## Oberfläche
+## How it works
 
-`fivec/web/`: `index.html`, `app.css`, `app.js` (DOM und API), `logik.js` (reine Funktionen, mit `node --test` getestet), `logo.svg`, `schriften/` (Geist und Geist Mono, SIL OFL, lokal ausgeliefert). Kein Build-Schritt, keine Abhängigkeit, keine externe Quelle: die CSP ist `default-src 'self'`, Tests verbieten externe URLs, Inline-Styles und HTML-Einfügen von Text.
+```
+Browser ──http──▶ 5C service (127.0.0.1:4555) ◀── reads ── ~/.claude/projects/*/*.jsonl
+                     │      │                             ~/.claude/sessions/*.json, ps, git
+                     │      └─ osascript ─▶ iTerm2: find, focus, start, title and badge
+                     ▼
+5C.app (fivec://) ─▶ bin/5c ─▶ ~/Library/Application Support/5C/ (names, hidden items, iTerm2 IDs, index cache)
+```
 
-Aktualisiert sich alle 2 s (nicht im Hintergrund-Tab). Klick auf den Namen öffnet die Bearbeitung: Enter speichert, Esc bricht ab, Cmd+Enter speichert aus der Beschreibung.
+- **Reads only:** `~/.claude/projects/*/*.jsonl` (indexed incrementally by byte offset, cached in `index.json`) and the status files `~/.claude/sessions/<pid>.json`. The `.key` files next to them are never read. 5C never writes into `~/.claude`.
+- **One tick, one `ps`:** the service builds the overview once every 2 s and uses it for liveness, process stats, iTerm2 tab sync and notifications.
+- **Tab sync** (`fivec/tabsync.py`) only touches tabs that 5C started (with the profile "5C"). It calls `osascript` only when something changed, otherwise at most every 10 s, because one sync costs about 280 ms.
+- **Notifications** (`fivec/mitteilung.py`) go through `open -g fivec://melden/<id>`, so they come from 5C and do not steal focus. 5C stays silent on service start, right after a session started, when the session's iTerm2 tab is in front, and for 30 s after notifying the same session. Clicking a notification is supposed to bring the session to the front; this is not verified yet.
+- **Resume and focus** (`fivec/oeffnen.py`) take the working directory and command from the index, never from the URL. An atomic start lock (15 s) plus a look at the remembered TTY prevent double starts.
 
-**Nach Projekt gruppiert** (Plan E8): eine Gruppe je cwd, Gruppen mit laufenden Sessions zuerst, sonst nach letzter Aktivität, in der Gruppe ebenso. Klick auf den Gruppenkopf klappt ein; eine eingeklappte Gruppe zeigt ihre laufenden Sessions trotzdem. Der Browser merkt sich das (`localStorage`).
+### Health states
 
-**Ausblenden:** „Ausblenden“ in der Zeile und „Projekt ausblenden“ im Gruppenkopf (bei Hover und Tastaturfokus, am Handy immer), danach kurz „Rückgängig“. Laufende Sessions bleiben immer sichtbar, und die Mitteilungen bleiben an. Der Schalter „N ausgeblendet“ in der Leiste zeigt das Ausgeblendete abgedimmt, mit „Einblenden“. Gespeichert in 5C (`meta.json`, `projekte.json`), also über Neustarts und Browser hinweg.
-
-## Gesundheit
-
-| Zustand | Bedingung | Tab-Titel |
+| State (UI) | Condition | Tab |
 |---|---|---|
-| arbeitet | läuft, `status: busy` | 🟢 |
-| wartet auf Dich | läuft, `status: idle` oder `waiting`, oder `waitingFor` gesetzt (offene Freigabe) | 🟡 |
-| hängt vielleicht | seit über 10 Min. `busy` **und** seit über 10 Min. keine neue Zeile im Verlauf | 🟠 |
-| startet | `claude --resume <id>` läuft, aber noch ohne Statusdatei | 🔵 |
-| verwaist | Statusdatei da, Prozess tot oder Startzeit passt nicht | |
-| ruht | sonst | |
+| arbeitet (working) | running, `status: busy` | 🟢 |
+| wartet auf Dich (waiting) | running, `status: idle` or `waiting`, or `waitingFor` set | 🟡 |
+| hängt vielleicht (possibly stuck) | `busy` for over 10 min **and** no new transcript line for over 10 min | 🟠 |
+| startet (starting) | `claude --resume <id>` runs, but there is no status file yet | 🔵 |
+| verwaist (orphaned) | status file exists, but the process is dead or its start time does not match | |
+| ruht (idle) | everything else | |
 
-Ein `ps`-Aufruf je Takt liefert Lebendprüfung, CPU, Speicher, Laufzeit, App (erste `.app` in der Elternkette) und `caffeinate` (`fivec/prozesse.py`, `fivec/gesundheit.py`). Der Dienst hält Titel und Badge der von 5C gestarteten iTerm2-Tabs auf Stand (`fivec/tabsync.py`): `osascript` nur bei geändertem Soll, sonst höchstens alle 10 s als Nachkontrolle (ein Abgleich kostet gemessen rund 280 ms).
+## Facts this is built on (measured 2026-10-03, Claude Code 2.1.288, iTerm2 3.7.3)
 
-## Mitteilungen
-
-Springt eine Session von „arbeitet“ oder „hängt vielleicht“ auf „wartet auf Dich“, meldet sich 5C mit Ton: „Braucht Deine Freigabe“, „Braucht Deine Antwort“ oder „Fertig, wartet auf Dich“, darunter Name und Projekt (`fivec/mitteilung.py`, Plan E7). Still bleibt 5C beim Dienststart, nach „startet“, wenn der iTerm2-Tab der Session vorn ist, und für 30 s nach einer Meldung derselben Session. Der Dienst ruft dafür `open -g fivec://melden/<id>` auf; 5C.app holt den Text über `5c open-url` und zeigt ihn als eigene Mitteilung. Ein Klick darauf soll die Session nach vorn holen (`5c klick`); belegt ist das noch nicht, siehe Ist-Dokument. Spur in `5c.log`.
-
-**Nach jedem Neubau von 5C.app** (`install.sh`, `werkzeug/app_bauen.sh`) fragt macOS „5C → Schreibtisch“ neu ab. Bis Du erlaubst, kommen weder Mitteilungen noch `fivec://`-Links an.
-
-## Fortsetzen und nach vorn holen
-
-„Fortsetzen“, „Nach vorn“, `5c open` und `fivec://open/<id>` laufen alle über `fivec/oeffnen.py`:
-läuft die Session in iTerm2, wird ihr Tab gewählt (gemerkte iTerm2-ID oder TTY); läuft sie in einer anderen App (z. B. Cursor), wird diese App aktiviert; sonst startet ein neues iTerm2-Fenster mit Profil „5C“ `cd <cwd> && caffeinate -dims claude --resume <id>`. Eine atomare Startsperre (15 s) und ein Blick aufs gemerkte TTY verhindern den Doppelstart. cwd und Befehl kommen aus dem Index, nie aus der URL.
-
-5C legt dafür das dynamische iTerm2-Profil `~/Library/Application Support/iTerm2/DynamicProfiles/5c.json` an (Titel nicht von Programmen überschreibbar, Badge aus Name und Beschreibung) und merkt sich iTerm2-IDs in `iterm.json`. Spur aller Aufrufe: `~/Library/Application Support/5C/5c.log`. Beim ersten Mal fragt macOS „… möchte iTerm steuern“: bestätigen.
+- `status` in the status file is `idle`, `busy` or `waiting`. `waitingFor` is `"permission prompt"` for a permission request and `"input needed"` for a question.
+- `procStart` is UTC while `ps -o lstart` is local time. Compare them only after conversion, otherwise every session looks orphaned.
+- `kill -9` leaves the status file behind, while SIGTERM removes it. Before the folder trust prompt is answered, only the `.key` file exists.
+- The file mtime of transcripts is useless as "last activity" (all files can share one mtime). 5C uses the last `timestamp` inside the file.
+- `claude-cli://` can neither resume nor focus a session, hence the own `fivec://` scheme.
+- iTerm2 sessions can be found by `unique ID` and by `tty`. Title and badge can be set live via AppleScript without writing to Claude's TTY, but the tab color cannot be set without the Python API. Claude Code overwrites the tab title via escape sequences, which the profile "5C" blocks (`Allow Title Setting: false`).
+- The system Python (`/usr/bin/python3`, 3.9) cannot run the code. App and agent use the Python that built them (`/opt/homebrew/bin/python3`). After a Python upgrade or moving the repo, run `./install.sh` again.
 
 ## API
 
-| Aufruf | Wirkung |
+| Call | Effect |
 |---|---|
-| `GET /api/sessions?stunden=48` (oder `?alle=1`) | Liste wie `5c list --json`, mit `name`, `beschreibung`, `ausgeblendet` und `projekt_ausgeblendet` |
-| `PATCH /api/sessions/<id>` `{"name": …, "beschreibung": …, "ausgeblendet": true}` | setzt jedes Feld einzeln, leerer Text oder `false` löscht; gespeichert in `meta.json` |
-| `PATCH /api/projekte` `{"cwd": …, "ausgeblendet": true}` | blendet ein Projekt aus oder ein; der cwd muss im Index stehen; gespeichert in `projekte.json` |
+| `GET /api/sessions?stunden=48` (or `?alle=1`) | list as in `5c list --json`, including `name`, `beschreibung`, `ausgeblendet`, `projekt_ausgeblendet` |
+| `PATCH /api/sessions/<id>` `{"name": …, "beschreibung": …, "ausgeblendet": true}` | sets any field; empty text or `false` clears it; stored in `meta.json` |
+| `PATCH /api/projekte` `{"cwd": …, "ausgeblendet": true}` | hides or shows a project; the cwd must be in the index; stored in `projekte.json` |
+| `POST /api/sessions/<id>/open` | bring to front or resume in iTerm2 |
 
-Schutz: nur `127.0.0.1`, `Host` muss `127.0.0.1:4555` oder `localhost:4555` sein, schreibende Aufrufe brauchen den Kopf `X-5C-Token` (steht als `<meta name="fivec-token">` in der ausgelieferten Seite, neu bei jedem Start) und keinen fremden `Origin`. Name höchstens 60 Zeichen, eine Zeile; Beschreibung höchstens 2000; Steuerzeichen sowie unsichtbare und bidirektionale Zeichen werden abgewiesen, weil beides später in iTerm2-Titel und -Badge landet.
+Protection: the service binds to `127.0.0.1` only, and the `Host` header must be `127.0.0.1:4555` or `localhost:4555` (against DNS rebinding). Writing calls need the header `X-5C-Token` (delivered in the page as `<meta name="fivec-token">`, new on every start) and no foreign `Origin`. Names are limited to 60 characters on one line, descriptions to 2000. Control characters and invisible or bidirectional characters are rejected, because both end up in iTerm2 titles and badges.
+
+## Web UI
+
+`fivec/web/`: `index.html`, `app.css`, `app.js` (DOM and API), `logik.js` (pure functions, tested with `node --test`), `logo.svg`, `schriften/` (Geist and Geist Mono, SIL OFL, served locally). There is no build step and no runtime dependency, and nothing is loaded from external sources: the CSP is `default-src 'self'`, and tests forbid external URLs, inline styles and inserting text as HTML.
+
+Click a name to edit it: Enter saves, Esc cancels, Cmd+Enter saves from the description. "Ausblenden" (hide) appears on hover in each row, "Projekt ausblenden" in each group header. The "N ausgeblendet" toggle shows hidden items dimmed with "Einblenden" (show). Hidden items are stored by 5C, collapsed groups by the browser.
+
+## Development
+
+```sh
+./pruefen.sh                     # syntax, Python and JS tests; run before every commit
+python3 werkzeug/mutationen.py   # mutation check: every injected bug must be caught by the tests
+```
+
+Every fix gets a test and a mutation that proves the test catches it. Tests redirect both data locations with `CLAUDE_HOME` and `FIVEC_HOME`.
