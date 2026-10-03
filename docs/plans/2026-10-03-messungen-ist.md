@@ -1,0 +1,92 @@
+# P0 Messungen - Ist
+
+Stand: 03.10.2026, Claude Code 2.1.288, iTerm2 3.7.3, macOS (Darwin 27.0.0). Gemessen an einer Test-Session in `/tmp/5c-probe` (Session `64acb6d7-…`), gestartet und gesteuert per AppleScript aus iTerm2.
+
+## Kurzfassung: was der Plan daraus übernimmt
+
+| Befund | Folge für 5C |
+|---|---|
+| `claude-cli://` kann weder fortsetzen noch fokussieren | eigenes Schema `fivec://` bleibt |
+| `status` ist `idle` oder `busy`, `waitingFor` meldet Warten auf den Nutzer | Zustände „Arbeitet“ und „Wartet auf Dich“ direkt aus der Statusdatei |
+| Vor der Vertrauensfrage gibt es nur `.key`, keine `.json` | neuer Zustand „Startet“: `claude` am TTY, aber noch keine Statusdatei |
+| `kill -9` lässt `.json` liegen, SIGTERM räumt auf | „Verwaist“ = Datei da, Prozess tot oder `procStart` passt nicht |
+| `procStart` steht in **UTC**, `ps -o lstart` in **Ortszeit** | Vergleich nur nach Umrechnung, sonst gilt jede Session als verwaist |
+| `cwd` in der Statusdatei ist aufgelöst (`/private/tmp/…` statt `/tmp/…`) | Pfade vor jedem Vergleich mit `realpath` normalisieren |
+| Der abgeleitete `name` wechselt bei jedem Start (`5c-probe-03`, dann `5c-probe-6a`) | Namen nur aus 5C, wie in E4 entschieden |
+| iTerm2-Sessions sind über `unique ID` und über `tty` auffindbar und lassen sich fokussieren | Doppelstart-Schutz wie geplant |
+| Titel und Badge lassen sich live setzen, **ohne** ins TTY von `claude` zu schreiben | Name und Beschreibung am Tab wie geplant |
+| Die Tab-Farbe lässt sich ohne Python-Paket **nicht** live ändern | Entscheidung E5 |
+| Der Auto-Modus von Claude Code verbietet einer Session, per iTerm2 in eine andere Claude-Session zu tippen | 5C startet nur und fokussiert, tippt nie in eine laufende Session. Das ist ohnehin außerhalb von V1 |
+
+## M1: Statusdatei `~/.claude/sessions/<pid>.json`
+
+- **Werte von `status`:** nach dem Start `idle`, während eines Turns `busy`, danach wieder `idle` (gemessen: `busy` um …484551, `idle` um …490761, also etwa 6 s für einen kleinen Turn).
+- **Felder** (aus dem Leser im Binary): `pid`, `sessionId`, `cwd`, `kind`, `entrypoint`, `status`, `waitingFor`, `updatedAt`, `statusUpdatedAt`, `name`, `nameSource`, `procStart`, `messagingSocketPath`, `logPath`, `jobId`, `parkedJobId`, `spare`, `state`, `detail`, `agent`.
+- **`statusUpdatedAt`** wird nur bei einem Statuswechsel gesetzt, **`updatedAt`** bei jedem Schreiben. Im Leerlauf schreibt Claude nicht, `updatedAt` bleibt also stehen. Ein altes `updatedAt` bei `idle` ist deshalb normal und kein Zeichen von Hängen.
+- **`waitingFor`:** laut Code gesetzt, solange die Session auf den Nutzer wartet (z. B. eine Freigabe). Nicht am lebenden Objekt gesehen, weil die Test-Session im Auto-Modus lief und nichts freigeben musste. **Offen: M1a.**
+- **Vertrauensfrage:** Solange beim ersten Start in einem Ordner die Frage „Is this a project you … trust?“ offen ist, existiert nur `<pid>.<hash>.key`, noch keine `<pid>.json`.
+- **Lebendprüfung:** Claude selbst hält einen Eintrag nur dann für lebendig, wenn der `pid` läuft **und** die Prozess-Startzeit zu `procStart` passt (Schutz gegen wiederverwendete PIDs). Gemessen: `procStart` = `Sat Oct  3 08:32:51 2026`, `ps -o lstart=` = `Sat Oct  3 10:32:51 2026`. Das ist dieselbe Sekunde, nur in UTC gegen Ortszeit.
+- **Prozesskette bei `caffeinate -dims claude --resume <id>`:** `zsh` → `claude` (pid in der Statusdatei) → `caffeinate`. `caffeinate` ist also am TTY über `ps -t <tty>` erkennbar.
+- **M1b offen:** Was passiert, wenn dieselbe Session ein zweites Mal mit `--resume` gestartet wird, während sie läuft? Claude erkennt laut Code einen „holder“. 5C verhindert den Fall ohnehin. Gemessen wird er später nur, wenn der Schutz einmal versagt.
+
+## M2: Was bleibt nach dem Beenden liegen?
+
+| Weg | `.json` | `.key` | gemessen |
+|---|---|---|---|
+| SIGTERM (`kill -TERM`) | entfernt | entfernt | ja |
+| `kill -9` | **bleibt** | **bleibt** | ja (`9549.json` liegt seitdem in `~/.claude/sessions/`) |
+| `/exit` | - | - | **offen (M2a)**, braucht eine Eingabe in die Session, siehe unten |
+| Ctrl-C (zweimal) | - | - | **offen (M2a)** |
+
+`caffeinate` endet mit dem `claude`-Prozess, auch bei `kill -9`.
+
+## M3: Kann `claude-cli://` fortsetzen oder fokussieren?
+
+**Nein.** Der Parser im Binary kennt genau zwei Aktionen:
+
+| Aktion | Parameter | Wirkung |
+|---|---|---|
+| `claude-cli://open` | `cwd`, `repo` (`owner/repo`), `q` (vorbefüllter Prompt) | neue Session in Terminal.app oder iTerm2 öffnen |
+| `claude-cli://install-plugin` | `plugin`, `marketplace` | Plugin installieren |
+
+Jede andere Aktion endet mit `Unknown deep link action`. Brauchbar als Vorbild: Claude prüft `cwd` auf Steuerzeichen sowie unsichtbare und bidirektionale Zeichen und begrenzt die Länge. 5C übernimmt das für Namen und Beschreibungen.
+
+## M4: iTerm2 per AppleScript finden und fokussieren
+
+- **Starten:** `create window with default profile`, dann `write text "cd … && claude …"`. Das läuft in der Login-Shell, `claude` und `caffeinate` werden gefunden. Rückgabe: Fenster-ID (`360`), `unique ID` der Session (`37FAB72D-…`), `tty` (`/dev/ttys017`).
+- **Finden und fokussieren:** Alle Fenster, Tabs und Sessions durchlaufen, auf `unique ID` (oder `tty`) prüfen, dann `select` auf Fenster, Tab und Session und `activate`. Ergebnis: `frontmost` = `true`.
+- **Unzuverlässig:** `is at shell prompt` meldete `false`, obwohl die Shell bereit war. Das braucht die Shell-Integration von iTerm2. 5C entscheidet stattdessen über `ps -t <tty>`.
+- **Nicht gemessen:** Vollbild und geteilte Bereiche. Das wird in P4 mitgeprüft.
+- **Freigabe:** Das erste AppleScript an iTerm2 löst die macOS-Abfrage „… möchte iTerm steuern“ aus. Wird sie abgelehnt, kommt sie nicht wieder (Fehler `-1743`). Zurück geht es nur über die Systemeinstellungen oder `tccutil reset AppleEvents <bundle-id>`. **`install.sh` (P6) muss das ankündigen und `-1743` mit einer klaren Anleitung abfangen.**
+
+## M5: Titel, Badge und Tab-Farbe live
+
+| Element | Weg | Ergebnis |
+|---|---|---|
+| **Titel** | AppleScript `set name to "…"` | geht live. iTerm2 hängt den laufenden Job an („5C Probe (claude)“). Ob sich das im Profil abschalten lässt, wird in P4 geprüft |
+| **Badge** | Profil mit Badge-Vorlage `\(user.fivec_badge)`, dann AppleScript `set variable named "user.fivec_badge"` | geht live, ohne ins TTY zu schreiben (gemessen: `variable named "badge"` = gesetzter Text) |
+| **Tab-Farbe fest** | im Profil (`Use Tab Color`, `Tab Color`) | geht |
+| **Tab-Farbe live** | AppleScript: keine Eigenschaft. `invoke API expression`: keine eingebaute Funktion dafür (`iterm2.set_name`, `iterm2.set_title`, `iterm2.set_status` …, aber keine Farbe) | geht **nicht** ohne die Python-API (Paket `iterm2`) oder Steuersequenzen ins TTY |
+
+**Profil:** 5C legt ein dynamisches Profil `~/Library/Application Support/iTerm2/DynamicProfiles/5c.json` an (Elternprofil `Default`, Badge-Vorlage). Getestet mit `5c-probe.json`, das nach der Messung wieder entfernt wurde.
+
+## Entscheidung E5: Status am Tab (entschieden 03.10.: Emoji im Titel)
+
+Steuersequenzen ins TTY scheiden aus: Sie würden mitten in die Bildschirmausgabe von `claude` fallen und könnten dessen Darstellung zerstören. Bleiben drei Wege:
+
+1. **Status als Zeichen im Titel (empfohlen):** z. B. `● 5C-Name`, mit `●` grün/gelb/orange gedacht, umgesetzt als Emoji `🟢 🟡 🟠`, live per `set name`. Ohne Abhängigkeit, sofort sichtbar in der Tab-Leiste.
+2. **Python-API von iTerm2:** echte Tab-Farbe live. Braucht das Paket `iterm2` (bricht E3) und eine Freigabe in den iTerm2-Einstellungen.
+3. **Feste Farbe je Profil:** z. B. alle 5C-Tabs in einer Farbe, Status nur auf der Seite.
+
+## Offen für den Nutzer (braucht eine Eingabe in eine Session)
+
+- **M1a `waitingFor`:** In einer Session ohne Auto-Modus etwas anstoßen, das eine Freigabe braucht, und die Statusdatei ansehen.
+- **M2a `/exit` und Ctrl-C:** je einmal in einer Test-Session, danach `ls ~/.claude/sessions/`.
+
+Beides kann der Agent nicht selbst: Der Auto-Modus blockt, dass eine Claude-Session per iTerm2 in eine andere tippt.
+
+## Hinterlassenschaften der Messung
+
+- `~/.claude/sessions/9549.json` und `9549.*.key`: absichtlich verwaist (aus dem `kill -9`). Sie bleiben als Testfall für P5 liegen.
+- `~/.claude/projects/-private-tmp-5c-probe/`: Verlauf der Test-Session.
+- `/tmp/5c-probe/`: leerer Testordner.
