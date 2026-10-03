@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="fivec-token" content="{{TOKEN}}">
+<meta name="color-scheme" content="dark light">
+<title>5C Cockpit</title>
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="preload" href="/schriften/geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/app.css">
+<script type="module" src="/app.js"></script>
+</head>
+<body>
+<div class="seite">
+  <div class="kopf">
+    <div class="logo" aria-hidden="true"><span class="logo-text">5C</span><span class="logo-weiter"></span></div>
+    <div class="kopf-text">
+      <h1>Claude Code Creative Continue Cockpit</h1>
+      <p class="untertitel">5C, Deine Claude-Code-Sessions auf diesem Mac</p>
+    </div>
+  </div>
+
+  <header class="leiste">
+    <nav class="zeitraum" aria-label="Zeitraum">
+      <button type="button" data-zeitraum="48h" aria-pressed="true">48 Stunden</button>
+      <button type="button" data-zeitraum="7t" aria-pressed="false">7 Tage</button>
+      <button type="button" data-zeitraum="alle" aria-pressed="false">Alle</button>
+    </nav>
+    <div class="suche">
+      <label for="suche">Suchen</label>
+      <input id="suche" type="search" autocomplete="off" spellcheck="false">
+    </div>
+    <p class="zusammenfassung" id="zusammenfassung" aria-live="polite"></p>
+  </header>
+
+  <main class="inhalt">
+    <p class="meldung" id="meldung" role="status" hidden></p>
+    <div class="tabelle-rahmen">
+      <div class="tabelle">
+        <div class="spalten" aria-hidden="true">
+          <span>Zustand</span><span>Name und Beschreibung</span><span>Projekt</span><span>Letzte Aktivität</span><span class="rechts">Nachr.</span><span>Git</span><span></span>
+        </div>
+        <section id="gruppe-laufend" aria-labelledby="titel-laufend" hidden>
+          <h2 id="titel-laufend">Läuft gerade</h2>
+          <div class="gruppe gruppe-laufend" id="liste-laufend"></div>
+        </section>
+        <section id="gruppe-zuletzt" aria-labelledby="titel-zuletzt">
+          <h2 id="titel-zuletzt">Zuletzt aktiv</h2>
+          <div class="gruppe" id="liste-zuletzt">
+            <div class="zeile skelett"></div><div class="zeile skelett"></div><div class="zeile skelett"></div>
+          </div>
+        </section>
+        <div class="leer" id="leer" hidden>
+          <p id="leer-text"></p>
+          <button type="button" id="leer-erweitern">Zeitraum erweitern</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

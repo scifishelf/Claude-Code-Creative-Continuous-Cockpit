@@ -7,6 +7,7 @@ Dienstes davon ab, den Index-Cache gleichzeitig zu schreiben.
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from . import gitstand, index, live, meta, pfade
 
@@ -23,6 +24,13 @@ def zeit(iso: str | None) -> datetime | None:
         return datetime.fromisoformat(iso.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
+def kurz_pfad(cwd: str | None) -> str:
+    if not cwd:
+        return "?"
+    heim = str(Path.home())
+    return "~" + cwd[len(heim):] if cwd == heim or cwd.startswith(heim + "/") else cwd
 
 
 def zustand_text(lauf: dict | None) -> str:
@@ -68,6 +76,7 @@ def sessions(stunden: float | None) -> list[dict]:
             zeilen.append({
                 **e,
                 "cwd": cwd,
+                "cwd_kurz": kurz_pfad(cwd),
                 "name": notiz.get("name", ""),
                 "beschreibung": notiz.get("beschreibung", ""),
                 "lauf": lauf,

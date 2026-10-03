@@ -1,0 +1,196 @@
+/* 5C Leitstand (Variante A, entschieden 03.10.2026). Ein Akzent, ein Radius-System:
+   Flächen 10px, Bedienelemente 8px, Marker 2px. Schriften lokal, keine CDN. */
+
+@font-face {
+  font-family: "Geist";
+  src: url("/schriften/geist.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/schriften/geist-mono.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --grund: #0E1013;
+  --flaeche: #15181D;
+  --flaeche-tief: #12151A;
+  --linie: #23272E;
+  --linie-fein: #1F2329;
+  --rand-eingabe: #2E333B;
+  --rand-knopf: #3A404A;
+  --text: #E7E9EC;
+  --text-2: #C9CDD3;
+  --text-3: #A3A9B2;
+  --leise: #8A919C;
+  --gesperrt: #6B727D;
+  --akzent: #7AA7FF;
+  --akzent-text: #0E1013;
+  --fehler: #F2555A;
+  --z-arbeitet: #3FB97A;
+  --z-wartet: #E3B341;
+  --z-haengt: #F0883E;
+  --z-startet: #7AA7FF;
+  --z-verwaist: #F2555A;
+  --z-ruht: #5C636E;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --sans: "Geist", system-ui, -apple-system, sans-serif;
+  --spalten: 168px minmax(0, 1fr) 280px 128px 64px 96px 136px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --grund: #F4F5F7;
+    --flaeche: #FFFFFF;
+    --flaeche-tief: #EEF0F3;
+    --linie: #DADDE2;
+    --linie-fein: #E5E7EB;
+    --rand-eingabe: #C3C8D0;
+    --rand-knopf: #B9BEC6;
+    --text: #15181C;
+    --text-2: #2F343B;
+    --text-3: #4A5059;
+    --leise: #5B626C;
+    --gesperrt: #8A9099;
+    --akzent: #2457D6;
+    --akzent-text: #FFFFFF;
+    --fehler: #C22A30;
+    --z-arbeitet: #1E8A52;
+    --z-wartet: #9A6B00;
+    --z-haengt: #C25A12;
+    --z-startet: #2457D6;
+    --z-verwaist: #C22A30;
+    --z-ruht: #9AA0A9;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--grund); color: var(--text); }
+body { font-family: var(--sans); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; }
+:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+
+/* Kopf */
+.kopf { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; padding: 28px 32px 22px; }
+.logo { position: relative; width: 52px; height: 52px; border-radius: 12px; background: var(--akzent); display: flex; align-items: center; justify-content: center; flex: none; }
+.logo-text { font-family: var(--mono); font-weight: 500; font-size: 22px; letter-spacing: -0.06em; color: var(--akzent-text); margin-right: 4px; }
+.logo-weiter { position: absolute; right: 7px; bottom: 7px; border-top: 4px solid transparent; border-bottom: 4px solid transparent; border-left: 6px solid var(--akzent-text); }
+.kopf-text { min-width: 0; }
+h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; }
+.untertitel { margin: 4px 0 0; color: var(--leise); }
+
+/* Leiste */
+.leiste { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 12px 32px; min-height: 64px; border-top: 1px solid var(--linie); border-bottom: 1px solid var(--linie); }
+.zeitraum { display: flex; gap: 2px; padding: 3px; background: var(--flaeche); border: 1px solid var(--linie); border-radius: 8px; }
+.zeitraum button { font-size: 13px; color: var(--text-2); background: transparent; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+.zeitraum button[aria-pressed="true"] { color: var(--grund); background: var(--text); }
+.suche { display: flex; align-items: center; gap: 8px; flex: 1 1 240px; max-width: 360px; }
+.suche label { font-size: 13px; color: var(--leise); }
+.suche input { flex: 1; min-width: 0; font-size: 13px; color: var(--text); background: var(--flaeche); border: 1px solid var(--rand-eingabe); border-radius: 8px; padding: 8px 10px; }
+.zusammenfassung { margin: 0 0 0 auto; color: var(--text-2); font-size: 13px; }
+
+/* Tabelle */
+.inhalt { max-width: 1376px; margin: 0 auto; padding: 24px 32px 48px; }
+.tabelle-rahmen { overflow-x: auto; }
+.tabelle { min-width: 1080px; }
+.spalten, .zeile { display: grid; grid-template-columns: var(--spalten); gap: 16px; }
+.spalten { padding: 0 16px 10px; color: var(--leise); font-size: 12px; }
+.rechts { text-align: right; }
+h2 { margin: 12px 0 8px; padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--text-2); }
+#gruppe-zuletzt h2 { margin-top: 28px; }
+#gruppe-laufend[hidden] + #gruppe-zuletzt h2 { margin-top: 12px; }
+.gruppe { border: 1px solid var(--linie); border-radius: 10px; overflow: hidden; }
+.gruppe-laufend { background: var(--flaeche); }
+.zeile { align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--linie-fein); }
+.gruppe > .zeile:last-child { border-bottom: 0; }
+.zeile.bearbeiten { align-items: start; background: var(--flaeche-tief); }
+
+.zustand { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.marker { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.z-arbeitet { color: var(--z-arbeitet); } .z-arbeitet .marker { background: var(--z-arbeitet); }
+.z-wartet { color: var(--z-wartet); } .z-wartet .marker { background: var(--z-wartet); }
+.z-haengt { color: var(--z-haengt); } .z-haengt .marker { background: var(--z-haengt); }
+.z-startet { color: var(--z-startet); } .z-startet .marker { background: var(--z-startet); }
+.z-verwaist { color: var(--z-verwaist); } .z-verwaist .marker { background: var(--z-verwaist); }
+.z-ruht { color: var(--leise); } .z-ruht .marker { background: var(--z-ruht); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .z-arbeitet .marker { animation: atmen 1.6s ease-in-out infinite; }
+}
+@keyframes atmen { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+.name-zelle { min-width: 0; }
+.name { display: block; max-width: 100%; padding: 0; border: 0; background: none; color: var(--text); font-weight: 600; font-size: 15px; text-align: left; cursor: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name:hover { text-decoration: underline; text-decoration-color: var(--rand-knopf); text-underline-offset: 3px; }
+.name.ohne-name { color: var(--leise); font-weight: 500; }
+.unterzeile { color: var(--leise); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.projekt { min-width: 0; font-family: var(--mono); font-size: 12px; color: var(--text-3); }
+.projekt span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.projekt .sid { color: var(--leise); font-size: 11px; }
+.zeit-rel { font-size: 13px; }
+.zeit-abs { font-family: var(--mono); font-size: 11px; color: var(--leise); }
+.nachr { font-family: var(--mono); font-size: 13px; text-align: right; color: var(--text-2); }
+.git { font-size: 13px; color: var(--text-2); }
+.git.leise { color: var(--leise); }
+.git.fehlt { color: var(--z-haengt); }
+
+.knopf { justify-self: end; font-size: 13px; font-weight: 500; border-radius: 8px; padding: 8px 14px; min-height: 36px; cursor: pointer; white-space: nowrap; transition: transform .12s ease; }
+.knopf:active:not(:disabled) { transform: translateY(1px); }
+.knopf-vorn { color: var(--akzent-text); background: var(--akzent); border: 0; }
+.knopf-fortsetzen { color: var(--text); background: transparent; border: 1px solid var(--rand-knopf); }
+.knopf-fehlt { color: var(--gesperrt); background: transparent; border: 1px solid var(--linie); cursor: not-allowed; }
+.knopf-hell { color: var(--grund); background: var(--text); border: 0; }
+.knopf-leer { color: var(--text-2); background: transparent; border: 1px solid var(--rand-eingabe); }
+
+/* Bearbeiten */
+.formular { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.formular label { font-size: 12px; color: var(--leise); }
+.formular input, .formular textarea { color: var(--text); background: var(--grund); border: 1px solid var(--rand-eingabe); border-radius: 8px; padding: 8px 10px; }
+.formular input { font-size: 15px; font-weight: 600; }
+.formular textarea { font-size: 13px; resize: vertical; min-height: 56px; }
+.formular .knoepfe { display: flex; gap: 8px; margin-top: 4px; }
+.formular .hinweis { font-size: 12px; color: var(--leise); }
+.formular .fehler { font-size: 13px; color: var(--fehler); }
+.bearbeiten .zustand, .bearbeiten .projekt, .bearbeiten .zeit, .bearbeiten .nachr, .bearbeiten .git { padding-top: 26px; }
+
+/* Zustände der Seite */
+.skelett { height: 64px; background: linear-gradient(90deg, var(--flaeche) 0%, var(--flaeche-tief) 50%, var(--flaeche) 100%); background-size: 200% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .skelett { animation: schimmer 1.4s linear infinite; }
+}
+@keyframes schimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.leer { padding: 48px 16px; text-align: center; color: var(--text-2); }
+.leer p { margin: 0 0 12px; }
+.leer button { font-size: 13px; color: var(--text); background: transparent; border: 1px solid var(--rand-knopf); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+.meldung { margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--linie); border-radius: 10px; background: var(--flaeche); color: var(--text-2); }
+.meldung.fehler { border-color: var(--fehler); color: var(--text); }
+
+/* Kopf und Leiste auf dieselbe Kante wie die Tabelle (max. 1376px, 32px Rand). */
+.kopf, .leiste { padding-inline: max(32px, calc((100% - 1376px) / 2 + 48px)); }
+
+@media (max-width: 767px) {
+  .kopf { padding: 20px 16px 16px; }
+  h1 { font-size: 22px; }
+  .leiste { padding: 12px 16px; }
+  .zusammenfassung { margin-left: 0; }
+  .inhalt { padding: 16px 16px 32px; }
+
+  /* Jede Zeile wird ein kompakter Block: Zustand und Knopf oben, darunter Name, Projekt, Zeit und Git. */
+  .tabelle { min-width: 0; }
+  .spalten { display: none; }
+  h2 { padding: 0 4px; }
+  .zeile { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 14px; }
+  .zeile > .zustand { grid-column: 1; grid-row: 1; }
+  .zeile > .knopf, .zeile.bearbeiten > div:last-child { grid-column: 2; grid-row: 1; }
+  .zeile > .name-zelle, .zeile > .formular, .zeile > .projekt { grid-column: 1 / -1; }
+  .zeile > .zeit { grid-column: 1; display: flex; gap: 8px; align-items: baseline; }
+  .zeile > .git { grid-column: 2; justify-self: end; }
+  .zeile > .nachr { display: none; }
+  .zeile > .projekt { display: flex; gap: 8px; align-items: baseline; }
+  .projekt span { flex: 0 1 auto; min-width: 0; }
+  .projekt .sid { flex: none; }
+  .bearbeiten .zustand, .bearbeiten .projekt, .bearbeiten .zeit, .bearbeiten .nachr, .bearbeiten .git { padding-top: 0; }
+}

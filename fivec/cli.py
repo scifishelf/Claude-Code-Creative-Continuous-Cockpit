@@ -3,16 +3,8 @@
 import argparse
 import json
 import sys
-from pathlib import Path
 
 from . import dienst, uebersicht
-
-
-def _kurz_pfad(cwd: str | None) -> str:
-    if not cwd:
-        return "?"
-    heim = str(Path.home())
-    return "~" + cwd[len(heim):] if cwd.startswith(heim) else cwd
 
 
 def _git_text(git: dict) -> str:
@@ -31,7 +23,7 @@ def _tabelle(zeilen: list[dict]) -> str:
         daten.append([
             z["zustand"],
             z["name"] or "-",
-            _kurz_pfad(z["cwd"]),
+            z["cwd_kurz"],
             t.astimezone().strftime("%d.%m. %H:%M") if t else "?",
             str(z["nachrichten"]),
             _git_text(z["git"]),

@@ -15,6 +15,7 @@ import hmac
 import json
 import secrets
 from http import HTTPStatus
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
@@ -22,14 +23,18 @@ from . import meta, uebersicht
 
 PORT = 4555
 MAX_KOERPER = 16 * 1024
+WEB = Path(__file__).resolve().parent / "web"
 
-SEITE = """<!doctype html>
-<html lang="de"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="fivec-token" content="{token}">
-<title>5C</title></head>
-<body><p>5C läuft. Die Übersicht kommt in P3, die API liegt unter <code>/api/sessions</code>.</p></body></html>
-"""
+# Feste Liste statt Dateisystem-Zugriff über den Pfad: so gibt es keinen Weg aus `web/` hinaus.
+STATISCH = {
+    "/app.css": ("app.css", "text/css; charset=utf-8"),
+    "/app.js": ("app.js", "text/javascript; charset=utf-8"),
+    "/logik.js": ("logik.js", "text/javascript; charset=utf-8"),
+    "/logo.svg": ("logo.svg", "image/svg+xml"),
+    "/schriften/geist.woff2": ("schriften/geist.woff2", "font/woff2"),
+    "/schriften/geist-mono.woff2": ("schriften/geist-mono.woff2", "font/woff2"),
+}
+CSP = "default-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -48,7 +53,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(koerper)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy", CSP)
+        self.send_header("Referrer-Policy", "no-referrer")
         self.end_headers()
         self.wfile.write(koerper)
 
@@ -76,7 +82,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._fehler(HTTPStatus.FORBIDDEN, "fremder Host")
         url = urlsplit(self.path)
         if url.path == "/":
-            return self._senden(HTTPStatus.OK, SEITE.format(token=self.token).encode(), "text/html; charset=utf-8")
+            seite = (WEB / "index.html").read_text().replace("{{TOKEN}}", self.token)
+            return self._senden(HTTPStatus.OK, seite.encode(), "text/html; charset=utf-8")
+        if url.path in STATISCH:
+            datei, typ = STATISCH[url.path]
+            return self._senden(HTTPStatus.OK, (WEB / datei).read_bytes(), typ)
         if url.path == "/api/sessions":
             q = parse_qs(url.query)
             try:

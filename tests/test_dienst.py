@@ -66,6 +66,28 @@ class DienstTest(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn(f'content="{TOKEN}"'.encode(), inhalt)
 
+    def test_statische_dateien(self):
+        for pfad, typ in (("/app.js", "text/javascript"), ("/logik.js", "text/javascript"),
+                          ("/app.css", "text/css"), ("/logo.svg", "image/svg+xml"),
+                          ("/schriften/geist.woff2", "font/woff2")):
+            verb = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+            verb.request("GET", pfad, headers={"Host": f"127.0.0.1:{self.port}"})
+            antwort = verb.getresponse()
+            antwort.read()
+            self.assertEqual(antwort.status, 200, pfad)
+            self.assertTrue(antwort.getheader("Content-Type").startswith(typ), pfad)
+            self.assertIn("default-src 'self'", antwort.getheader("Content-Security-Policy"))
+            verb.close()
+
+    def test_kein_weg_aus_web_hinaus(self):
+        for pfad in ("/../dienst.py", "/%2e%2e/dienst.py", "/web/app.js", "/schriften/../app.js", "/index.html"):
+            status, _ = self.anfrage("GET", pfad)
+            self.assertEqual(status, 404, pfad)
+
+    def test_seite_ohne_platzhalter(self):
+        _, inhalt = self.anfrage("GET", "/")
+        self.assertNotIn(b"{{TOKEN}}", inhalt)
+
     def test_fremder_host_wird_abgewiesen(self):
         for pfad in ("/", "/api/sessions"):
             status, _ = self.anfrage("GET", pfad, host="boese.example:4555")

@@ -35,6 +35,25 @@ MUTATIONEN = [
      'if unicodedata.category(z) == "Cc" and', 'if False and'),
     ("Längengrenze weg", "fivec/meta.py",
      "if len(text) > maximal:", "if False:"),
+    ("Pfad-Kürzung ohne Grenze", "fivec/uebersicht.py",
+     'cwd == heim or cwd.startswith(heim + "/")', "cwd.startswith(heim)"),
+    ("Google Fonts eingebunden", "fivec/web/app.css",
+     'src: url("/schriften/geist.woff2")', 'src: url("https://fonts.gstatic.com/geist.woff2")'),
+    ("Name als HTML", "fivec/web/app.js",
+     "if (text !== undefined) e.textContent = text;", "if (text !== undefined) e.innerHTML = text;"),
+    ("Inline-Style in der Seite", "fivec/web/index.html",
+     '<div class="seite">', '<div class="seite" style="color:red">'),
+    ("unbekannter Zustand warnfarbig", "fivec/web/logik.js",
+     'return KLASSEN[zustand] ?? "ruht";', 'return KLASSEN[zustand] ?? "verwaist";'),
+    ("Ordner fehlt nicht gesperrt", "fivec/web/logik.js",
+     'return { text: "Ordner fehlt", art: "fehlt", gesperrt: true };', 'return { text: "Ordner fehlt", art: "fehlt", gesperrt: false };'),
+    ("statische Datei per Pfad", "fivec/dienst.py",
+     "if url.path in STATISCH:", "if url.path.lstrip('/') and (WEB / url.path.lstrip('/')).is_file():\n            return self._senden(HTTPStatus.OK, (WEB / url.path.lstrip('/')).read_bytes(), 'text/plain')\n        if url.path in STATISCH:"),
+]
+
+PRUEFUNGEN = [
+    [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."],
+    ["node", "--test", "tests/js/*.test.mjs"],
 ]
 
 durch = 0
@@ -48,9 +67,10 @@ for name, datei, alt, neu in MUTATIONEN:
         durch += 1
         continue
     pfad.write_text(text.replace(alt, neu, 1))
-    r = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."],
-                       cwd=ziel, capture_output=True, text=True)
-    gefangen = r.returncode != 0
+    gefangen = any(
+        subprocess.run(befehl, cwd=ziel, capture_output=True, text=True).returncode != 0
+        for befehl in PRUEFUNGEN
+    )
     durch += not gefangen
     print(f"{'gefangen' if gefangen else 'DURCHGERUTSCHT'}: {name}")
 sys.exit(1 if durch else 0)
