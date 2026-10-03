@@ -47,7 +47,7 @@ Aktualisiert sich alle 2 s (nicht im Hintergrund-Tab). Klick auf den Namen öffn
 | Zustand | Bedingung | Tab-Titel |
 |---|---|---|
 | arbeitet | läuft, `status: busy` | 🟢 |
-| wartet auf Dich | läuft, `status: idle` oder `waitingFor` gesetzt | 🟡 |
+| wartet auf Dich | läuft, `status: idle` oder `waiting`, oder `waitingFor` gesetzt (offene Freigabe) | 🟡 |
 | hängt vielleicht | seit über 10 Min. `busy` **und** seit über 10 Min. keine neue Zeile im Verlauf | 🟠 |
 | startet | `claude --resume <id>` läuft, aber noch ohne Statusdatei | 🔵 |
 | verwaist | Statusdatei da, Prozess tot oder Startzeit passt nicht | |

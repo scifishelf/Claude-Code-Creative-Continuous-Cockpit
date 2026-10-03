@@ -27,7 +27,8 @@ class GesundheitTest(unittest.TestCase):
     def test_grundzustaende(self):
         self.assertEqual(z(lauf("busy")), "arbeitet")
         self.assertEqual(z(lauf("idle")), "wartet auf Dich")
-        self.assertEqual(z(lauf("busy", waitingFor="permission")), "wartet auf Dich")
+        self.assertEqual(z(lauf("busy", waitingFor="permission prompt")), "wartet auf Dich")
+        self.assertEqual(z(lauf("waiting")), "wartet auf Dich", "M1a: status waiting")
         self.assertEqual(z(None), "ruht")
         self.assertEqual(z({"zustand": "verwaist"}), "verwaist")
         self.assertEqual(z(lauf("irgendwas")), "läuft")

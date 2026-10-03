@@ -7,7 +7,7 @@ Stand: 03.10.2026, Claude Code 2.1.288, iTerm2 3.7.3, macOS (Darwin 27.0.0). Gem
 | Befund | Folge für 5C |
 |---|---|
 | `claude-cli://` kann weder fortsetzen noch fokussieren | eigenes Schema `fivec://` bleibt |
-| `status` ist `idle` oder `busy`, `waitingFor` meldet Warten auf den Nutzer | Zustände „Arbeitet“ und „Wartet auf Dich“ direkt aus der Statusdatei |
+| `status` ist `idle`, `busy` oder `waiting`; bei offener Freigabe steht `waiting` mit `waitingFor: "permission prompt"` (M1a) | Zustände „Arbeitet“ und „Wartet auf Dich“ direkt aus der Statusdatei |
 | Vor der Vertrauensfrage gibt es nur `.key`, keine `.json` | neuer Zustand „Startet“: `claude` am TTY, aber noch keine Statusdatei |
 | `kill -9` lässt `.json` liegen, bis sie offenbar eine andere laufende Claude-Instanz aufräumt (gemessen: weg nach etwa 2 min); SIGTERM räumt sofort auf | „Verwaist“ = Datei da, Prozess tot oder `procStart` passt nicht. Der Zustand ist kurzlebig, 5C darf sich nicht darauf verlassen, dass er lange sichtbar ist |
 | `procStart` steht in **UTC**, `ps -o lstart` in **Ortszeit** | Vergleich nur nach Umrechnung, sonst gilt jede Session als verwaist |
@@ -23,7 +23,8 @@ Stand: 03.10.2026, Claude Code 2.1.288, iTerm2 3.7.3, macOS (Darwin 27.0.0). Gem
 - **Werte von `status`:** nach dem Start `idle`, während eines Turns `busy`, danach wieder `idle` (gemessen: `busy` um …484551, `idle` um …490761, also etwa 6 s für einen kleinen Turn).
 - **Felder** (aus dem Leser im Binary): `pid`, `sessionId`, `cwd`, `kind`, `entrypoint`, `status`, `waitingFor`, `updatedAt`, `statusUpdatedAt`, `name`, `nameSource`, `procStart`, `messagingSocketPath`, `logPath`, `jobId`, `parkedJobId`, `spare`, `state`, `detail`, `agent`.
 - **`statusUpdatedAt`** wird nur bei einem Statuswechsel gesetzt, **`updatedAt`** bei jedem Schreiben. Im Leerlauf schreibt Claude nicht, `updatedAt` bleibt also stehen. Ein altes `updatedAt` bei `idle` ist deshalb normal und kein Zeichen von Hängen.
-- **`waitingFor`:** laut Code gesetzt, solange die Session auf den Nutzer wartet (z. B. eine Freigabe). Nicht am lebenden Objekt gesehen, weil die Test-Session im Auto-Modus lief und nichts freigeben musste. **Offen: M1a.**
+- **`waitingFor` (M1a, gemessen 03.10.2026):** Eine Session ohne Auto-Modus (`claude --permission-mode default "Lege die Datei probe.txt … an."`, Prompt als Argument, also ohne Eintippen) stand nach etwa 4 s auf `"status": "waiting"`, `"waitingFor": "permission prompt"`. `status` kennt damit einen **dritten Wert**, `waiting`; `statusUpdatedAt` springt beim Wechsel mit. 5C wertet `waitingFor` zuerst aus und zeigt „wartet auf Dich“; `waiting` ohne `waitingFor` zählt ebenso.
+- **`peerFeatures`** enthält `notify_idle`: Claude kennt selbst eine Meldung beim Leerlauf. 5C baut darauf nicht auf, weil die Statusdatei genügt.
 - **Vertrauensfrage:** Solange beim ersten Start in einem Ordner die Frage „Is this a project you … trust?“ offen ist, existiert nur `<pid>.<hash>.key`, noch keine `<pid>.json`.
 - **Lebendprüfung:** Claude selbst hält einen Eintrag nur dann für lebendig, wenn der `pid` läuft **und** die Prozess-Startzeit zu `procStart` passt (Schutz gegen wiederverwendete PIDs). Gemessen: `procStart` = `Sat Oct  3 08:32:51 2026`, `ps -o lstart=` = `Sat Oct  3 10:32:51 2026`. Das ist dieselbe Sekunde, nur in UTC gegen Ortszeit.
 - **Prozesskette bei `caffeinate -dims claude --resume <id>`:** `zsh` → `claude` (pid in der Statusdatei) → `caffeinate`. `caffeinate` ist also am TTY über `ps -t <tty>` erkennbar.
@@ -80,10 +81,9 @@ Steuersequenzen ins TTY scheiden aus: Sie würden mitten in die Bildschirmausgab
 
 ## Offen für den Nutzer (braucht eine Eingabe in eine Session)
 
-- **M1a `waitingFor`:** In einer Session ohne Auto-Modus etwas anstoßen, das eine Freigabe braucht, und die Statusdatei ansehen.
 - **M2a `/exit` und Ctrl-C:** je einmal in einer Test-Session, danach `ls ~/.claude/sessions/`.
 
-Beides kann der Agent nicht selbst: Der Auto-Modus blockt, dass eine Claude-Session per iTerm2 in eine andere tippt.
+Das kann der Agent nicht selbst: Der Auto-Modus blockt, dass eine Claude-Session per iTerm2 in eine andere tippt.
 
 ## Hinterlassenschaften der Messung
 

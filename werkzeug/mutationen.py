@@ -9,6 +9,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 MUTATIONEN = [
+    ("status waiting nicht wartend", "fivec/gesundheit.py",
+     'if status in ("idle", "waiting"):', 'if status == "idle":'),
     ("UTC-Umrechnung weg", "fivec/live.py",
      "utc = calendar.timegm(", "utc = time.mktime("),
     ("halbe Zeile mitlesen", "fivec/index.py",
@@ -72,7 +74,7 @@ MUTATIONEN = [
     ("hängt schon bei einer Bedingung", "fivec/gesundheit.py",
      "busy_seit > HAENGT_NACH_S and still > HAENGT_NACH_S", "(busy_seit > HAENGT_NACH_S or still > HAENGT_NACH_S)"),
     ("hängt auch bei idle", "fivec/gesundheit.py",
-     '    if status == "idle":\n        return {"zustand": "wartet auf Dich", "still_s": None}\n', ""),
+     '    if status in ("idle", "waiting"):\n        return {"zustand": "wartet auf Dich", "still_s": None}\n', ""),
     ("startet zählt caffeinate mit", "fivec/prozesse.py",
      "        if not _ist_claude(p[\"command\"]):\n            continue\n", ""),
     ("App aus login-Argument", "fivec/prozesse.py",

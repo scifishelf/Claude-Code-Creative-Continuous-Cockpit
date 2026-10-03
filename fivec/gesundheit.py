@@ -1,7 +1,7 @@
 """Zustand einer Session (Plan, Abschnitt "Gesundheit: die Zustände").
 
 arbeitet         läuft, status busy
-wartet auf Dich  läuft, status idle oder waitingFor gesetzt
+wartet auf Dich  läuft, status idle oder waiting, oder waitingFor gesetzt (M1a: Freigabe offen)
 hängt vielleicht läuft, busy seit über 10 Min. UND seit über 10 Min. keine neue Zeile im Verlauf
 startet          `claude --resume <id>` läuft, aber noch ohne Statusdatei (z. B. offene Vertrauensfrage)
 verwaist         Statusdatei da, Prozess tot oder Startzeit passt nicht
@@ -48,7 +48,7 @@ def bewerten(lauf: dict | None, startend: bool, letzter: str | None, jetzt: date
     if lauf.get("waitingFor"):
         return {"zustand": "wartet auf Dich", "still_s": None}
     status = lauf.get("status")
-    if status == "idle":
+    if status in ("idle", "waiting"):
         return {"zustand": "wartet auf Dich", "still_s": None}
     if status == "busy":
         busy_seit = _sekunden_seit_ms(lauf.get("statusUpdatedAt"), jetzt)
