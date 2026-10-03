@@ -114,3 +114,14 @@ Das kann der Agent nicht selbst: Der Auto-Modus blockt, dass eine Claude-Session
 | `kill -9` auf den Dienst: launchd startet ihn neu (`runs = 2`, neue pid), die API antwortet wieder mit 200 | `launchctl print` | `KeepAlive` plus `ThrottleInterval 10` reichen |
 | Der Dienst steuert iTerm2 selbst (Tab-Abgleich, Knopf „Nach vorn“) ohne weitere Abfrage | `POST /api/sessions/<id>/open`, `dienst.log` | |
 | Ein von Hand laufender `5c dienst` hielte Port 4555; der Agent liefe dann in Neustarts | Ablauf | `install.sh` bricht mit Hinweis ab |
+
+## Nachtrag E7 (03.10.2026): Mitteilung bei „wartet auf Dich“
+
+| Befund | Fundstelle | Folge |
+|---|---|---|
+| Bei einer offenen Rückfrage (AskUserQuestion) steht `"status": "waiting"`, `"waitingFor": "input needed"`, bei einer Freigabe `"permission prompt"` | Statusdatei dieser Session, sekündlich mitgelesen | Titel der Mitteilung nach `waitingFor`: Freigabe, Antwort, fertig |
+| `open -g fivec://melden/<id>` lässt den Fokus, wo er ist (vorher und nachher Cursor vorn) | `lsappinfo front` | Weg über 5C.app, die Mitteilung kommt von 5C |
+| **Jeder Neubau von 5C.app fragt „5C → Schreibtisch“ neu ab.** Bis zur Antwort hängt das Applet, die URL kommt nicht an (`UserNotificationCenter` vorn, kein Eintrag in `5c.log`) | zweimal beobachtet nach `werkzeug/app_bauen.sh` | Die Ad-hoc-Signatur wechselt mit dem Skript. Nach `install.sh` oder `app_bauen.sh` die Abfrage erlauben. Abhilfe in den Ideen des Plans |
+| Der Dienst meldet echt: `melden <id>: Braucht Deine Freigabe` (12:52:56, vor der Textkorrektur) und `Braucht Deine Antwort` (13:51:33) für eine Session in Cursor, während sie auf eine Rückfrage wartete | `5c.log` | Auslöser, Text und Weg stimmen |
+| Ein Start der App (`open -a 5C.app`) mit frischem Merker ruft `5c klick` und holt die gemerkte Session nach vorn (`klick …: In iTerm2 nach vorn geholt.`) | `5c.log`, `lsappinfo front` | `on run` und `klick` arbeiten |
+| **Offen:** Ob ein Klick auf die Mitteilung selbst bei 5C ankommt, ist nicht belegt. Nach dem Klick um 12:52 lag der Merker unverbraucht da, `klick` fehlt im Log. Seitdem ist `on reopen` ergänzt (läuft das Applet beim Klick noch, kommt reopen statt run) und jeder Klick wird protokolliert, auch „keine frische Mitteilung“. Danach nicht mehr geprobt | `5c.log` | Nächste Probe: Mitteilung anklicken, dann `tail ~/Library/Application\ Support/5C/5c.log`. Fehlt `klick`, leitet macOS den Klick nicht an ein Applet weiter |

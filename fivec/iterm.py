@@ -188,6 +188,23 @@ end run
 """
 
 
+_VORNE = """
+on run argv
+  if application "iTerm2" is not running then return ""
+  tell application "iTerm2"
+    if not frontmost then return ""
+    if (count of windows) is 0 then return ""
+    return tty of current session of current window
+  end tell
+end run
+"""
+
+
+def vorne_tty() -> str:
+    """TTY der Session, die in iTerm2 gerade vorn ist; leer, wenn iTerm2 nicht vorn ist."""
+    return _osa(_VORNE, timeout=5)
+
+
 def abgleichen(soll: list[tuple[str, str, str]]) -> int:
     """Titel und Badge vieler Sessions in EINEM osascript-Aufruf; setzt nur, was abweicht.
     soll: [(unique ID, Titel, Badge), …] -> Anzahl geänderter Werte."""

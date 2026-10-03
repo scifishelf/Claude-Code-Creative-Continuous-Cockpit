@@ -13,6 +13,7 @@ Voraussetzungen: macOS, iTerm2, Python ab 3.10 (Homebrew), Node für die Prüfke
 
 Danach: http://127.0.0.1:4555/ oder 5C.app doppelklicken. Drei macOS-Abfragen beim ersten Mal, alle erlauben:
 1. **Python → Schreibtisch** (Dateien und Ordner), wenn das Repo dort liegt: sonst startet der Dienst nicht und lauscht nicht. Der Dienst liest außerdem den Git-Stand der Repos dort.
+   Dasselbe für **5C → Schreibtisch**, beim ersten `fivec://`-Link oder der ersten Mitteilung, und nach jedem Neubau der App erneut.
 2. **5C → iTerm** (Automation), beim ersten Klick auf einen `fivec://`-Link.
 3. **Python → iTerm** (Automation), beim ersten „Fortsetzen“ oder „Nach vorn“ auf der Seite.
 
@@ -23,6 +24,7 @@ Logs: `~/Library/Logs/5C/dienst.log`, Aufrufe der App: `~/Library/Application Su
 ```sh
 bin/5c dienst               # Übersicht auf http://127.0.0.1:4555/ (läuft nach install.sh per launchd)
 bin/5c open <session-id>    # nach vorn holen, sonst in iTerm2 fortsetzen
+bin/5c klick                # zuletzt gemeldete Session nach vorn, sonst 'seite' (für 5C.app)
 werkzeug/app_bauen.sh       # baut ~/Applications/5C.app, registriert fivec://open/<session-id>
 bin/5c list                 # Sessions mit Aktivität in den letzten 48 h, neueste zuerst
 bin/5c list --stunden 240   # anderer Zeitraum
@@ -54,6 +56,12 @@ Aktualisiert sich alle 2 s (nicht im Hintergrund-Tab). Klick auf den Namen öffn
 | ruht | sonst | |
 
 Ein `ps`-Aufruf je Takt liefert Lebendprüfung, CPU, Speicher, Laufzeit, App (erste `.app` in der Elternkette) und `caffeinate` (`fivec/prozesse.py`, `fivec/gesundheit.py`). Der Dienst hält Titel und Badge der von 5C gestarteten iTerm2-Tabs auf Stand (`fivec/tabsync.py`): `osascript` nur bei geändertem Soll, sonst höchstens alle 10 s als Nachkontrolle (ein Abgleich kostet gemessen rund 280 ms).
+
+## Mitteilungen
+
+Springt eine Session von „arbeitet“ oder „hängt vielleicht“ auf „wartet auf Dich“, meldet sich 5C mit Ton: „Braucht Deine Freigabe“, „Braucht Deine Antwort“ oder „Fertig, wartet auf Dich“, darunter Name und Projekt (`fivec/mitteilung.py`, Plan E7). Still bleibt 5C beim Dienststart, nach „startet“, wenn der iTerm2-Tab der Session vorn ist, und für 30 s nach einer Meldung derselben Session. Der Dienst ruft dafür `open -g fivec://melden/<id>` auf; 5C.app holt den Text über `5c open-url` und zeigt ihn als eigene Mitteilung. Ein Klick darauf soll die Session nach vorn holen (`5c klick`); belegt ist das noch nicht, siehe Ist-Dokument. Spur in `5c.log`.
+
+**Nach jedem Neubau von 5C.app** (`install.sh`, `werkzeug/app_bauen.sh`) fragt macOS „5C → Schreibtisch“ neu ab. Bis Du erlaubst, kommen weder Mitteilungen noch `fivec://`-Links an.
 
 ## Fortsetzen und nach vorn holen
 

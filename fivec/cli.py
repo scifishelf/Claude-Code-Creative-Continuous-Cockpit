@@ -1,11 +1,11 @@
-"""Kommandozeile: `5c list`, `5c dienst`."""
+"""Kommandozeile: `5c list`, `5c dienst`, `5c open`, dazu `open-url` und `klick` für 5C.app."""
 
 import argparse
 import json
 import sys
 from datetime import datetime
 
-from . import dienst, iterm, oeffnen, pfade, uebersicht
+from . import dienst, iterm, mitteilung, oeffnen, pfade, uebersicht
 
 
 def _protokoll(zeile: str) -> None:
@@ -57,13 +57,35 @@ def main(argv: list[str] | None = None) -> int:
     ds.add_argument("--port", type=int, default=dienst.PORT)
     op = sub.add_parser("open", help="Session nach vorn holen oder in iTerm2 fortsetzen")
     op.add_argument("sid")
-    ou = sub.add_parser("open-url", help="wie open, für fivec://open/<id> (5C.app)")
+    ou = sub.add_parser("open-url", help="für 5C.app: fivec://open/<id> wie open, fivec://melden/<id> liefert den Text einer Mitteilung")
     ou.add_argument("url")
+    sub.add_parser("klick", help="für 5C.app: zuletzt gemeldete Session nach vorn, sonst 'seite'")
     args = parser.parse_args(argv)
 
     if args.befehl == "dienst":
         dienst.starten(args.port)
         return 0
+    if args.befehl == "open-url" and mitteilung.URL.match(args.url.strip()):
+        sid = mitteilung.URL.match(args.url.strip()).group(1)
+        zeile = next((z for z in uebersicht.sessions(0) if z["sid"] == sid), None)
+        text = mitteilung.antwort(zeile)
+        _protokoll(f"melden {sid}: {text.splitlines()[1] if text else 'nichts mehr zu melden'}")
+        print(text)
+        return 0
+    if args.befehl == "klick":
+        sid = mitteilung.zuletzt_nehmen()
+        if sid is None:
+            _protokoll("klick: keine frische Mitteilung, Übersicht")
+            print("seite")
+            return 0
+        try:
+            text, code = oeffnen.oeffnen(sid)["text"], 0
+        except (oeffnen.OeffnenFehler, iterm.ItermFehler) as e:
+            text, code = str(e), 1
+        _protokoll(f"klick {sid}: {text}")
+        if code:
+            print(text)
+        return code
     if args.befehl in ("open", "open-url"):
         ziel = args.sid if args.befehl == "open" else args.url
         try:

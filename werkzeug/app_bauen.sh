@@ -26,12 +26,35 @@ on open location theURL
 	on error fehler
 		set antwort to fehler
 	end try
-	display notification antwort with title "5C"
+	if antwort is "" then return
+	set teile to paragraphs of antwort
+	if (count of teile) is 4 and item 1 of teile is "5C-MELDUNG" then
+		display notification (item 4 of teile) with title (item 2 of teile) subtitle (item 3 of teile) sound name "Glass"
+	else
+		display notification antwort with title "5C"
+	end if
 end open location
 
+-- Doppelklick auf die App oder Klick auf eine ihrer Mitteilungen: die zuletzt gemeldete
+-- Session nach vorn (fivec/mitteilung.py), sonst die Übersicht. Läuft die App beim Klick
+-- noch, schickt macOS reopen statt run.
+on reopen
+	klick()
+end reopen
+
 on run
-	open location "http://127.0.0.1:4555/"
+	klick()
 end run
+
+on klick()
+	try
+		set antwort to do shell script quoted form of "$PY_AS" & " " & quoted form of "$FIVEC_AS" & " klick"
+	on error fehler
+		display notification fehler with title "5C"
+		return
+	end try
+	if antwort is "seite" then do shell script "open http://127.0.0.1:4555/"
+end klick
 EOF
 
 mkdir -p "$ZIEL"

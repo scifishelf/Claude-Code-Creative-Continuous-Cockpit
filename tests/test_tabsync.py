@@ -55,6 +55,15 @@ class TabsyncTest(unittest.TestCase):
             tabsync.einmal(falsch, jetzt=lambda: next(uhr))   # 15 s: Nachkontrolle
         self.assertEqual([a[0][1] for a in aufrufe], ["🟢 X", "🟡 X", "🟡 X"])
 
+    def test_takt_reicht_seine_zeilen_durch(self):
+        """Tab-Abgleich und Mitteilung teilen sich eine Übersicht je Takt, also ein ps."""
+        tabsync._zuletzt.update(soll=None, zeit=0.0)
+        falsch = mock.Mock(abgleichen=lambda soll: len(soll))
+        with mock.patch("fivec.tabsync.uebersicht.sessions") as sessions, \
+                mock.patch("fivec.tabsync.oeffnen.iterm_gemerkt", lambda: {A: {"unique_id": "U"}}):
+            self.assertEqual(tabsync.einmal(falsch, zeilen=[zeile(A, "arbeitet")]), 1)
+        sessions.assert_not_called()
+
     def test_nichts_zu_tun_kein_aufruf(self):
         with mock.patch("fivec.iterm.subprocess.run") as run:
             self.assertEqual(iterm.abgleichen([]), 0)
