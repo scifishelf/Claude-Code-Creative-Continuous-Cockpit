@@ -8,6 +8,7 @@ Stand: 03.10.2026, `eb65018` auf `main`, gepusht nach `github.com:scifishelf/Cla
 |---|---|
 | Bedienung, Einrichten, API, Gesundheit, Fortsetzen, gemessene Grundlagen (Englisch) | [README.md](README.md) |
 | Plan V1 (Phasen, Entscheidungen E1 bis E8, Ideen) und Messbefunde: `docs/` ist seit dem 03.10. gelöscht | `git show 8b14656:docs/plans/2026-10-03-5c-v1-plan.md`, `git show 8b14656:docs/plans/2026-10-03-messungen-ist.md` |
+| Statisches Beispiel mit erfundenen Daten | `sample/5c-cockpit.html`; erzeugt aus der echten Seite per Playwright (API mit Testdaten beantwortet, DOM eingefroren). Nach UI-Änderungen neu erzeugen |
 | Entwürfe der Oberfläche (Variante A gewählt) | Canvas https://claude.ai/artifact/1FVkuCvMRSmi3Y7RDKXbeS (privat) |
 
 ## Wo wir stehen
