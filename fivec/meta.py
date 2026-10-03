@@ -1,6 +1,7 @@
-"""Name und Beschreibung je Session, nur in 5C gespeichert (E4).
+"""Name, Beschreibung und „ausgeblendet“ je Session, ausgeblendete Projekte; nur in 5C gespeichert (E4, E8).
 
-Datei: <FIVEC_HOME>/meta.json, {session_id: {"name": …, "beschreibung": …}}.
+Dateien: <FIVEC_HOME>/meta.json, {session_id: {"name": …, "beschreibung": …, "ausgeblendet": true}},
+und <FIVEC_HOME>/projekte.json, {cwd: {"ausgeblendet": true}}.
 Beide Texte landen später im iTerm2-Titel und -Badge. Deshalb gelten dieselben
 Regeln wie bei Claudes eigener Deep-Link-Prüfung: keine Steuerzeichen, keine
 unsichtbaren oder bidirektionalen Zeichen, begrenzte Länge.
@@ -55,10 +56,10 @@ def laden() -> dict:
 
 
 def setzen(sid: str, aenderung: dict) -> dict:
-    """Nur `name` und `beschreibung`, beide optional. Gibt den neuen Stand zurück."""
+    """Nur `name`, `beschreibung` und `ausgeblendet`, alle optional. Gibt den neuen Stand zurück."""
     if not UUID.match(sid):
         raise Ungueltig("keine gültige Session-ID")
-    unbekannt = set(aenderung) - {"name", "beschreibung"}
+    unbekannt = set(aenderung) - {"name", "beschreibung", "ausgeblendet"}
     if unbekannt:
         raise Ungueltig(f"unbekannte Felder: {', '.join(sorted(unbekannt))}")
     neu = {}
@@ -66,6 +67,8 @@ def setzen(sid: str, aenderung: dict) -> dict:
         neu["name"] = pruefen(aenderung["name"], "Name", NAME_MAX, zeilen_erlaubt=False)
     if "beschreibung" in aenderung:
         neu["beschreibung"] = pruefen(aenderung["beschreibung"], "Beschreibung", BESCHREIBUNG_MAX, zeilen_erlaubt=True)
+    if "ausgeblendet" in aenderung:
+        neu["ausgeblendet"] = _wahrheit(aenderung["ausgeblendet"])
     with _lock:
         alles = laden()
         eintrag = {**alles.get(sid, {}), **neu}
@@ -74,9 +77,56 @@ def setzen(sid: str, aenderung: dict) -> dict:
             alles[sid] = eintrag
         else:
             alles.pop(sid, None)
-        pfad = _pfad()
-        pfad.parent.mkdir(parents=True, exist_ok=True)
-        tmp = pfad.with_suffix(".tmp")
-        tmp.write_text(json.dumps(alles, ensure_ascii=False, indent=1))
-        os.replace(tmp, pfad)
+        _schreiben(_pfad(), alles)
     return eintrag
+
+
+def _wahrheit(wert) -> bool:
+    if not isinstance(wert, bool):
+        raise Ungueltig("ausgeblendet muss true oder false sein")
+    return wert
+
+
+def _schreiben(pfad, daten: dict) -> None:
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    tmp = pfad.with_suffix(".tmp")
+    tmp.write_text(json.dumps(daten, ensure_ascii=False, indent=1))
+    os.replace(tmp, pfad)
+
+
+# --- Projekte -----------------------------------------------------------------
+
+def _projekte_pfad():
+    return pfade.fivec_home() / "projekte.json"
+
+
+def projekte_laden() -> dict:
+    try:
+        daten = json.loads(_projekte_pfad().read_text())
+    except (OSError, ValueError):
+        return {}
+    return daten if isinstance(daten, dict) else {}
+
+
+def ausgeblendete_projekte() -> set:
+    return {cwd for cwd, e in projekte_laden().items() if isinstance(e, dict) and e.get("ausgeblendet")}
+
+
+def projekt_setzen(cwd: str, aenderung: dict) -> dict:
+    """Nur `ausgeblendet`. Ob es den cwd gibt, prüft der Aufrufer gegen den Index."""
+    if not isinstance(cwd, str) or not cwd:
+        raise Ungueltig("cwd fehlt")
+    unbekannt = set(aenderung) - {"ausgeblendet"}
+    if unbekannt:
+        raise Ungueltig(f"unbekannte Felder: {', '.join(sorted(unbekannt))}")
+    if "ausgeblendet" not in aenderung:
+        raise Ungueltig("ausgeblendet fehlt")
+    aus = _wahrheit(aenderung["ausgeblendet"])
+    with _lock:
+        alles = projekte_laden()
+        if aus:
+            alles[cwd] = {"ausgeblendet": True}
+        else:
+            alles.pop(cwd, None)
+        _schreiben(_projekte_pfad(), alles)
+    return {"cwd": cwd, "ausgeblendet": aus}

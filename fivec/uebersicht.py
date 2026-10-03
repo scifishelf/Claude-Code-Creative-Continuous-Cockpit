@@ -57,6 +57,7 @@ def sessions(stunden: float | None, tab: dict | None = None) -> list[dict]:
         laeufe = live.laufende(pfade.claude_home(), prozess=prozesse.info_von(tab))
         startend = prozesse.startende(tab)
         notizen = meta.laden()
+        projekte_aus = meta.ausgeblendete_projekte()
         jetzt = datetime.now(timezone.utc)
         grenze = None if stunden is None else jetzt - timedelta(hours=stunden)
         zeilen = []
@@ -76,6 +77,8 @@ def sessions(stunden: float | None, tab: dict | None = None) -> list[dict]:
                 "cwd_kurz": kurz_pfad(cwd),
                 "name": notiz.get("name", ""),
                 "beschreibung": notiz.get("beschreibung", ""),
+                "ausgeblendet": bool(notiz.get("ausgeblendet")),
+                "projekt_ausgeblendet": cwd in projekte_aus,
                 "lauf": lauf,
                 "aktiv": aktiv,
                 "zustand": g["zustand"],

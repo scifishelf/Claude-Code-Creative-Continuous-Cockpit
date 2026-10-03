@@ -91,12 +91,59 @@ export function passtZurSuche(zeile, suche) {
   return q.split(/\s+/).every((wort) => heu.includes(wort));
 }
 
-export function aufteilen(zeilen, suche = "") {
-  const sichtbar = zeilen.filter((z) => passtZurSuche(z, suche));
-  return {
-    laufend: sichtbar.filter(laeuft),
-    zuletzt: sichtbar.filter((z) => !laeuft(z)),
-  };
+// Ausgeblendet (E8): die Session selbst oder ihr Projekt. Laufende bleiben immer sichtbar,
+// damit keine übersehen wird, die auf Dich wartet.
+export function verborgen(zeile) {
+  return Boolean(zeile.ausgeblendet || zeile.projekt_ausgeblendet) && !laeuft(zeile);
+}
+
+function neuer(a, b) {
+  return (b.letzter || "").localeCompare(a.letzter || "");
+}
+
+// Gruppen nach Projekt (cwd). Laufende zuerst, in der Gruppe wie zwischen den Gruppen,
+// sonst nach letzter Aktivität. Eine eingeklappte Gruppe zeigt nur ihre laufenden Sessions.
+export function gruppieren(zeilen, { suche = "", zeigeAusgeblendete = false, eingeklappt = new Set() } = {}) {
+  const passend = zeilen.filter((z) => passtZurSuche(z, suche));
+  const ausgeblendet = passend.filter(verborgen).length;
+  const karte = new Map();
+  for (const z of passend) {
+    if (verborgen(z) && !zeigeAusgeblendete) continue;
+    const schluessel = z.cwd || "?";
+    if (!karte.has(schluessel)) karte.set(schluessel, []);
+    karte.get(schluessel).push(z);
+  }
+  const gruppen = [...karte.entries()].map(([cwd, liste]) => {
+    liste.sort((a, b) => Number(laeuft(b)) - Number(laeuft(a)) || neuer(a, b));
+    const zu = eingeklappt.has(cwd);
+    return {
+      cwd,
+      ...projektTitel(liste[0].cwd_kurz || cwd),
+      laufend: liste.filter(laeuft).length,
+      gesamt: liste.length,
+      letzter: liste.reduce((m, z) => ((z.letzter || "") > m ? z.letzter : m), ""),
+      projektAusgeblendet: liste.some((z) => z.projekt_ausgeblendet),
+      eingeklappt: zu,
+      zeilen: zu ? liste.filter(laeuft) : liste,
+    };
+  });
+  gruppen.sort((a, b) => Number(b.laufend > 0) - Number(a.laufend > 0) || neuer(a, b));
+  return { gruppen, ausgeblendet };
+}
+
+// "~/Desktop/coding/5c" -> { titel: "5c", ort: "~/Desktop/coding" }
+export function projektTitel(pfad) {
+  const teile = String(pfad || "?").replace(/\/+$/, "").split("/");
+  const titel = teile.pop() || pfad || "?";
+  return { titel, ort: teile.join("/") };
+}
+
+export function gruppenInfo(g, jetzt = new Date()) {
+  const teile = [];
+  if (g.laufend) teile.push(`${g.laufend} läuft`);
+  teile.push(g.gesamt === 1 ? "1 Session" : `${g.gesamt} Sessions`);
+  if (g.letzter) teile.push(zeitRelativ(g.letzter, jetzt));
+  return teile.join(" · ");
 }
 
 export function zusammenfassung(zeilen) {

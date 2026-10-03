@@ -144,5 +144,52 @@ class DienstTest(unittest.TestCase):
         self.assertEqual(meta.laden(), {})
 
 
+    # --- Ausblenden (E8) ---------------------------------------------------
+
+    def projekt(self, koerper, kopf=None):
+        return self.anfrage("PATCH", "/api/projekte", koerper, kopf={"X-5C-Token": TOKEN} if kopf is None else kopf)
+
+    def test_session_ausblenden_und_einblenden(self):
+        status, inhalt = self.patch({"ausgeblendet": True})
+        self.assertEqual(status, 200, inhalt)
+        zeile = json.loads(self.anfrage("GET", "/api/sessions?alle=1")[1])[0]
+        self.assertTrue(zeile["ausgeblendet"])
+        self.assertFalse(zeile["projekt_ausgeblendet"])
+        self.patch({"ausgeblendet": False})
+        self.assertEqual(meta.laden(), {}, "einblenden räumt den Eintrag weg")
+
+    def test_projekt_ausblenden_und_einblenden(self):
+        status, inhalt = self.projekt({"cwd": "/gibt/es/nicht", "ausgeblendet": True})
+        self.assertEqual(status, 200, inhalt)
+        zeile = json.loads(self.anfrage("GET", "/api/sessions?alle=1")[1])[0]
+        self.assertTrue(zeile["projekt_ausgeblendet"])
+        self.assertFalse(zeile["ausgeblendet"])
+        self.projekt({"cwd": "/gibt/es/nicht", "ausgeblendet": False})
+        self.assertEqual(meta.projekte_laden(), {})
+
+    def test_projekt_nur_aus_dem_index(self):
+        status, _ = self.projekt({"cwd": "/etc", "ausgeblendet": True})
+        self.assertEqual(status, 404)
+        status, _ = self.projekt({"ausgeblendet": True})
+        self.assertEqual(status, 404)
+        self.assertEqual(meta.projekte_laden(), {})
+
+    def test_projekt_ohne_token_oder_mit_boesen_werten(self):
+        status, _ = self.projekt({"cwd": "/gibt/es/nicht", "ausgeblendet": True}, kopf={})
+        self.assertEqual(status, 403)
+        for koerper in ({"cwd": "/gibt/es/nicht", "ausgeblendet": "ja"},
+                        {"cwd": "/gibt/es/nicht", "ausgeblendet": 1},
+                        {"cwd": "/gibt/es/nicht"},
+                        {"cwd": "/gibt/es/nicht", "ausgeblendet": True, "name": "x"}):
+            status, _ = self.projekt(koerper)
+            self.assertEqual(status, 400, koerper)
+        self.assertEqual(meta.projekte_laden(), {})
+
+    def test_session_ausgeblendet_nur_wahrheitswert(self):
+        status, _ = self.patch({"ausgeblendet": "true"})
+        self.assertEqual(status, 400)
+        self.assertEqual(meta.laden(), {})
+
+
 if __name__ == "__main__":
     unittest.main()

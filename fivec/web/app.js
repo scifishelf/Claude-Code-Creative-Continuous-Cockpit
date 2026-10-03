@@ -1,14 +1,32 @@
-// Übersicht: lädt /api/sessions alle 2 s, baut die Zeilen per DOM und textContent
-// (nie als HTML, denn Namen, Prompts und Pfade sind fremder Text) und speichert Name und
-// Beschreibung per PATCH. Während einer Bearbeitung wird nicht neu gezeichnet.
+// Übersicht: lädt /api/sessions alle 2 s, baut die Projektgruppen per DOM und textContent
+// (nie als HTML, denn Namen, Prompts und Pfade sind fremder Text) und speichert Name,
+// Beschreibung und „ausgeblendet“ per PATCH. Während einer Bearbeitung wird nicht neu gezeichnet.
 
 import {
-  aktion, anzeigeName, aufteilen, gitText, zeitAbsolut, zeitRelativ,
-  ZEITRAEUME, zusammenfassung, zustandDetail, zustandHinweis, zustandKlasse,
+  aktion, anzeigeName, gitText, gruppenInfo, gruppieren, zeitAbsolut, zeitRelativ,
+  verborgen, ZEITRAEUME, zusammenfassung, zustandDetail, zustandHinweis, zustandKlasse,
 } from "./logik.js";
 
 const TAKT_MS = 2000;
+const MELDUNG_MS = 8000;
 const TOKEN = document.querySelector('meta[name="fivec-token"]').content;
+const SPEICHER_EINGEKLAPPT = "5c-eingeklappt";
+
+// Eingeklappte Gruppen sind eine Bequemlichkeit je Browser; ohne Speicher geht es auch.
+function eingeklapptLaden() {
+  try {
+    const liste = JSON.parse(localStorage.getItem(SPEICHER_EINGEKLAPPT) || "[]");
+    return new Set(Array.isArray(liste) ? liste : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function eingeklapptSpeichern() {
+  try {
+    localStorage.setItem(SPEICHER_EINGEKLAPPT, JSON.stringify([...zustand.eingeklappt]));
+  } catch { /* privater Modus: dann eben nur für diesen Besuch */ }
+}
 
 const zustand = {
   zeitraum: "48h",
@@ -16,6 +34,9 @@ const zustand = {
   zeilen: null,
   bearbeitet: null, // Session-ID der offenen Bearbeitung
   laedt: false,
+  zeigeAusgeblendete: false,
+  eingeklappt: eingeklapptLaden(),
+  schreibStand: 0, // zählt Schreibvorgänge; eine Liste von davor ist veraltet
 };
 
 const $ = (id) => document.getElementById(id);
@@ -27,11 +48,19 @@ function el(tag, klasse, text) {
   return e;
 }
 
-function meldung(text, istFehler = false) {
+let meldungUhr = null;
+
+// rueckgaengig: optionale Funktion, dann steht „Rückgängig“ daneben und die Meldung geht nach MELDUNG_MS.
+function meldung(text, istFehler = false, rueckgaengig = null) {
   const m = $("meldung");
+  clearTimeout(meldungUhr);
   m.hidden = !text;
-  m.textContent = text || "";
+  $("meldung-text").textContent = text || "";
   m.classList.toggle("fehler", istFehler);
+  const knopf = $("meldung-knopf");
+  knopf.hidden = !rueckgaengig;
+  knopf.onclick = rueckgaengig ? () => { meldung(""); rueckgaengig(); } : null;
+  if (rueckgaengig) meldungUhr = setTimeout(() => meldung(""), MELDUNG_MS);
 }
 
 // --- Laden --------------------------------------------------------------
@@ -39,10 +68,14 @@ function meldung(text, istFehler = false) {
 async function laden() {
   if (zustand.laedt) return;
   zustand.laedt = true;
+  const stand = zustand.schreibStand;
   try {
     const antwort = await fetch(`/api/sessions?${ZEITRAEUME[zustand.zeitraum].query}`, { cache: "no-store" });
     if (!antwort.ok) throw new Error(`HTTP ${antwort.status}`);
-    zustand.zeilen = await antwort.json();
+    const zeilen = await antwort.json();
+    // Während der Abfrage wurde geschrieben: Diese Liste kennt das noch nicht und würde es überzeichnen.
+    if (stand !== zustand.schreibStand) return;
+    zustand.zeilen = zeilen;
     if ($("meldung").classList.contains("fehler")) meldung("");
     if (!zustand.bearbeitet) zeichnen();
   } catch {
@@ -56,35 +89,82 @@ async function laden() {
 
 function zeichnen() {
   if (!zustand.zeilen) return;
-  const { laufend, zuletzt } = aufteilen(zustand.zeilen, zustand.suche);
+  const { gruppen, ausgeblendet } = gruppieren(zustand.zeilen, {
+    suche: zustand.suche, zeigeAusgeblendete: zustand.zeigeAusgeblendete, eingeklappt: zustand.eingeklappt,
+  });
   $("zusammenfassung").textContent = zusammenfassung(zustand.zeilen);
+  const schalter = $("ausgeblendet-schalter");
+  if (ausgeblendet === 0 && zustand.zeigeAusgeblendete) zustand.zeigeAusgeblendete = false;
+  schalter.hidden = ausgeblendet === 0;
+  schalter.textContent = `${ausgeblendet} ausgeblendet`;
+  schalter.setAttribute("aria-pressed", String(zustand.zeigeAusgeblendete));
+  schalter.title = zustand.zeigeAusgeblendete ? "Ausgeblendete wieder verbergen" : "Ausgeblendete anzeigen";
 
   // Der Takt baut die Zeilen neu; der Tastaturfokus soll dabei an seiner Stelle bleiben.
   const aktiv = document.activeElement;
   const fokusSid = aktiv?.closest?.(".zeile")?.dataset.sid;
-  const fokusArt = aktiv?.classList?.contains("name") ? ".name" : ".knopf";
+  const fokusArt = aktiv?.classList?.contains("name") ? ".name"
+    : aktiv?.classList?.contains("knopf-aus") ? ".knopf-aus" : ".knopf-haupt";
+  const fokusGruppe = aktiv?.closest?.(".gruppe-kopf")?.dataset.cwd;
+  const fokusKopfArt = aktiv?.classList?.contains("knopf-aus") ? ".knopf-aus" : ".gruppe-klappe";
 
-  $("gruppe-laufend").hidden = laufend.length === 0;
-  $("liste-laufend").replaceChildren(...laufend.map(zeile));
-  $("gruppe-zuletzt").hidden = zuletzt.length === 0;
-  $("liste-zuletzt").replaceChildren(...zuletzt.map(zeile));
+  $("gruppen").replaceChildren(...gruppen.map(gruppe));
 
   if (fokusSid && !zustand.bearbeitet) {
     document.querySelector(`.zeile[data-sid="${CSS.escape(fokusSid)}"] ${fokusArt}`)?.focus();
+  } else if (fokusGruppe) {
+    document.querySelector(`.gruppe-kopf[data-cwd="${CSS.escape(fokusGruppe)}"] ${fokusKopfArt}`)?.focus();
   }
 
-  const leer = laufend.length === 0 && zuletzt.length === 0;
+  const leer = gruppen.length === 0;
   $("leer").hidden = !leer;
+  zustand.leerWeg = !leer ? null : zustand.suche ? "suche" : ausgeblendet ? "ausgeblendet" : "zeitraum";
   if (leer) {
-    $("leer-text").textContent = zustand.suche ? "Keine Session passt zur Suche." : ZEITRAEUME[zustand.zeitraum].leer;
-    $("leer-erweitern").hidden = zustand.zeitraum === "alle" && !zustand.suche;
-    $("leer-erweitern").textContent = zustand.suche ? "Suche leeren" : "Zeitraum erweitern";
+    const texte = {
+      suche: ["Keine Session passt zur Suche.", "Suche leeren"],
+      ausgeblendet: ["Alle Sessions in diesem Zeitraum sind ausgeblendet.", "Ausgeblendete anzeigen"],
+      zeitraum: [ZEITRAEUME[zustand.zeitraum].leer, "Zeitraum erweitern"],
+    }[zustand.leerWeg];
+    $("leer-text").textContent = texte[0];
+    $("leer-erweitern").textContent = texte[1];
+    $("leer-erweitern").hidden = zustand.leerWeg === "zeitraum" && zustand.zeitraum === "alle";
   }
+}
+
+function gruppe(g) {
+  const abschnitt = el("section", "gruppe");
+  const kopf = el("div", g.projektAusgeblendet ? "gruppe-kopf ausgeblendet" : "gruppe-kopf");
+  kopf.dataset.cwd = g.cwd;
+  const klappe = el("button", "gruppe-klappe");
+  klappe.type = "button";
+  klappe.setAttribute("aria-expanded", String(!g.eingeklappt));
+  klappe.title = g.cwd;
+  const titel = el("span", "gruppe-titel", g.titel);
+  klappe.append(el("span", "pfeil"), titel);
+  if (g.ort) klappe.append(el("span", "gruppe-ort", g.ort));
+  if (g.projektAusgeblendet) klappe.append(el("span", "marke", "ausgeblendet"));
+  klappe.append(el("span", "gruppe-info", gruppenInfo(g)));
+  klappe.addEventListener("click", () => {
+    if (zustand.eingeklappt.has(g.cwd)) zustand.eingeklappt.delete(g.cwd);
+    else zustand.eingeklappt.add(g.cwd);
+    eingeklapptSpeichern();
+    zeichnen();
+  });
+  const aus = el("button", "knopf knopf-aus", g.projektAusgeblendet ? "Projekt einblenden" : "Projekt ausblenden");
+  aus.type = "button";
+  aus.addEventListener("click", () => projektAusblenden(g, !g.projektAusgeblendet));
+  kopf.append(klappe, aus);
+  abschnitt.append(kopf);
+  const liste = el("div", "gruppe-zeilen");
+  liste.append(...g.zeilen.map(zeile));
+  abschnitt.append(liste);
+  return abschnitt;
 }
 
 function zeile(z) {
   const bearbeiten = zustand.bearbeitet === z.sid;
-  const reihe = el("div", bearbeiten ? "zeile bearbeiten" : "zeile");
+  const verdeckt = verborgen(z);
+  const reihe = el("div", ["zeile", bearbeiten && "bearbeiten", verdeckt && "ausgeblendet"].filter(Boolean).join(" "));
   reihe.dataset.sid = z.sid;
 
   const zelle = el("div", "zustand-zelle");
@@ -100,9 +180,9 @@ function zeile(z) {
   reihe.append(bearbeiten ? formular(z) : nameZelle(z));
 
   const projekt = el("div", "projekt");
-  const pfad = el("span", "", z.cwd_kurz || z.cwd || "?");
-  pfad.title = z.cwd || "";
-  projekt.append(pfad, el("span", "sid", z.sid.slice(0, 8)));
+  const sid = el("span", "sid", z.sid.slice(0, 8));
+  sid.title = z.sid;
+  projekt.append(sid);
   reihe.append(projekt);
 
   const zeit = el("div", "zeit");
@@ -120,13 +200,18 @@ function zeile(z) {
   if (bearbeiten) {
     reihe.append(el("div"));
   } else {
+    const aktionen = el("div", "aktionen");
+    const aus = el("button", "knopf knopf-aus", z.ausgeblendet ? "Einblenden" : "Ausblenden");
+    aus.type = "button";
+    aus.addEventListener("click", () => sessionAusblenden(z, !z.ausgeblendet));
     const a = aktion(z);
-    const knopf = el("button", `knopf knopf-${a.art}`, a.text);
+    const knopf = el("button", `knopf knopf-haupt knopf-${a.art}`, a.text);
     knopf.type = "button";
     knopf.disabled = a.gesperrt;
     if (a.gesperrt) knopf.title = "Der Ordner dieser Session existiert nicht mehr";
     knopf.addEventListener("click", () => oeffnen(z, knopf));
-    reihe.append(knopf);
+    aktionen.append(aus, knopf);
+    reihe.append(aktionen);
   }
   return reihe;
 }
@@ -228,6 +313,49 @@ async function speichernAnDienst(sid, daten, fehlerFeld) {
   }
 }
 
+// Ausblenden (E8): sofort zeichnen, dann speichern; scheitert das Speichern, zurück und Fehler zeigen.
+async function ausblendenSpeichern(pfad, koerper, anwenden, text, rueckgaengig) {
+  zustand.schreibStand += 1;
+  anwenden(koerper.ausgeblendet);
+  zeichnen();
+  try {
+    const antwort = await fetch(pfad, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-5C-Token": TOKEN },
+      body: JSON.stringify(koerper),
+    });
+    const inhalt = await antwort.json().catch(() => ({}));
+    if (!antwort.ok) throw new Error(inhalt.fehler || `HTTP ${antwort.status}`);
+    zustand.schreibStand += 1; // auch Abfragen, die während des Speicherns liefen, sind veraltet
+    meldung(text, false, rueckgaengig);
+  } catch (e) {
+    anwenden(!koerper.ausgeblendet);
+    zeichnen();
+    meldung(`Nicht gespeichert: ${e.message === "Failed to fetch" ? "Der 5C-Dienst antwortet nicht." : e.message}`, true);
+  }
+}
+
+function sessionAusblenden(z, aus) {
+  const name = anzeigeName(z).ohneName ? z.sid.slice(0, 8) : z.name;
+  ausblendenSpeichern(
+    `/api/sessions/${encodeURIComponent(z.sid)}`,
+    { ausgeblendet: aus },
+    (wert) => { for (const x of zustand.zeilen) if (x.sid === z.sid) x.ausgeblendet = wert; },
+    aus ? `Ausgeblendet: ${name}.` : `Eingeblendet: ${name}.`,
+    () => sessionAusblenden(z, !aus),
+  );
+}
+
+function projektAusblenden(g, aus) {
+  ausblendenSpeichern(
+    "/api/projekte",
+    { cwd: g.cwd, ausgeblendet: aus },
+    (wert) => { for (const x of zustand.zeilen) if ((x.cwd || "?") === g.cwd) x.projekt_ausgeblendet = wert; },
+    aus ? `Ausgeblendet: ${g.titel}.` : `Eingeblendet: ${g.titel}.`,
+    () => projektAusblenden(g, !aus),
+  );
+}
+
 async function oeffnen(z, knopf) {
   knopf.disabled = true;
   try {
@@ -259,8 +387,13 @@ for (const b of document.querySelectorAll("[data-zeitraum]")) {
   b.addEventListener("click", () => zeitraumSetzen(b.dataset.zeitraum));
 }
 $("suche").addEventListener("input", (e) => { zustand.suche = e.target.value; zeichnen(); });
+$("ausgeblendet-schalter").addEventListener("click", () => {
+  zustand.zeigeAusgeblendete = !zustand.zeigeAusgeblendete;
+  zeichnen();
+});
 $("leer-erweitern").addEventListener("click", () => {
-  if (zustand.suche) { $("suche").value = ""; zustand.suche = ""; zeichnen(); return; }
+  if (zustand.leerWeg === "suche") { $("suche").value = ""; zustand.suche = ""; zeichnen(); return; }
+  if (zustand.leerWeg === "ausgeblendet") { zustand.zeigeAusgeblendete = true; zeichnen(); return; }
   zeitraumSetzen(zustand.zeitraum === "48h" ? "7t" : "alle");
 });
 

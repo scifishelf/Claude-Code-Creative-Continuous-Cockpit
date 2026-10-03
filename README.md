@@ -44,6 +44,10 @@ python3 werkzeug/mutationen.py   # Gegenprobe: eingebaute Fehler müssen die Tes
 
 Aktualisiert sich alle 2 s (nicht im Hintergrund-Tab). Klick auf den Namen öffnet die Bearbeitung: Enter speichert, Esc bricht ab, Cmd+Enter speichert aus der Beschreibung.
 
+**Nach Projekt gruppiert** (Plan E8): eine Gruppe je cwd, Gruppen mit laufenden Sessions zuerst, sonst nach letzter Aktivität, in der Gruppe ebenso. Klick auf den Gruppenkopf klappt ein; eine eingeklappte Gruppe zeigt ihre laufenden Sessions trotzdem. Der Browser merkt sich das (`localStorage`).
+
+**Ausblenden:** „Ausblenden“ in der Zeile und „Projekt ausblenden“ im Gruppenkopf (bei Hover und Tastaturfokus, am Handy immer), danach kurz „Rückgängig“. Laufende Sessions bleiben immer sichtbar, und die Mitteilungen bleiben an. Der Schalter „N ausgeblendet“ in der Leiste zeigt das Ausgeblendete abgedimmt, mit „Einblenden“. Gespeichert in 5C (`meta.json`, `projekte.json`), also über Neustarts und Browser hinweg.
+
 ## Gesundheit
 
 | Zustand | Bedingung | Tab-Titel |
@@ -74,7 +78,8 @@ läuft die Session in iTerm2, wird ihr Tab gewählt (gemerkte iTerm2-ID oder TTY
 
 | Aufruf | Wirkung |
 |---|---|
-| `GET /api/sessions?stunden=48` (oder `?alle=1`) | Liste wie `5c list --json`, mit `name` und `beschreibung` |
-| `PATCH /api/sessions/<id>` `{"name": …, "beschreibung": …}` | setzt eines oder beides, leerer Text löscht; gespeichert in `meta.json` |
+| `GET /api/sessions?stunden=48` (oder `?alle=1`) | Liste wie `5c list --json`, mit `name`, `beschreibung`, `ausgeblendet` und `projekt_ausgeblendet` |
+| `PATCH /api/sessions/<id>` `{"name": …, "beschreibung": …, "ausgeblendet": true}` | setzt jedes Feld einzeln, leerer Text oder `false` löscht; gespeichert in `meta.json` |
+| `PATCH /api/projekte` `{"cwd": …, "ausgeblendet": true}` | blendet ein Projekt aus oder ein; der cwd muss im Index stehen; gespeichert in `projekte.json` |
 
 Schutz: nur `127.0.0.1`, `Host` muss `127.0.0.1:4555` oder `localhost:4555` sein, schreibende Aufrufe brauchen den Kopf `X-5C-Token` (steht als `<meta name="fivec-token">` in der ausgelieferten Seite, neu bei jedem Start) und keinen fremden `Origin`. Name höchstens 60 Zeichen, eine Zeile; Beschreibung höchstens 2000; Steuerzeichen sowie unsichtbare und bidirektionale Zeichen werden abgewiesen, weil beides später in iTerm2-Titel und -Badge landet.

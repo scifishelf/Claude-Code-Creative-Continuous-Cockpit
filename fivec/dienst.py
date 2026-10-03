@@ -8,7 +8,8 @@ Schutz (Plan, Abschnitt Sicherheit):
 
 API:
   GET   /api/sessions?stunden=48   (oder ?alle=1)
-  PATCH /api/sessions/<id>         {"name": …, "beschreibung": …}
+  PATCH /api/sessions/<id>         {"name": …, "beschreibung": …, "ausgeblendet": true|false}
+  PATCH /api/projekte              {"cwd": …, "ausgeblendet": true|false}   (cwd muss im Index stehen)
   POST  /api/sessions/<id>/open    nach vorn holen oder in iTerm2 fortsetzen (fivec/oeffnen.py)
 """
 
@@ -104,6 +105,8 @@ class Handler(BaseHTTPRequestHandler):
         if not self._schreiben_erlaubt():
             return self._fehler(HTTPStatus.FORBIDDEN, "Token fehlt oder fremder Origin")
         teile = urlsplit(self.path).path.strip("/").split("/")
+        if teile == ["api", "projekte"]:
+            return self._projekt_patch()
         if len(teile) != 3 or teile[:2] != ["api", "sessions"]:
             return self._fehler(HTTPStatus.NOT_FOUND, "nicht gefunden")
         sid = teile[2]
@@ -111,20 +114,42 @@ class Handler(BaseHTTPRequestHandler):
             return self._fehler(HTTPStatus.BAD_REQUEST, "keine gültige Session-ID")
         if sid not in uebersicht.index_aktuell():
             return self._fehler(HTTPStatus.NOT_FOUND, "Session unbekannt")
-        laenge = int(self.headers.get("Content-Length") or 0)
-        if laenge > MAX_KOERPER:
-            return self._fehler(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "zu groß")
-        try:
-            daten = json.loads(self.rfile.read(laenge) or b"{}")
-            if not isinstance(daten, dict):
-                raise ValueError
-        except ValueError:
-            return self._fehler(HTTPStatus.BAD_REQUEST, "kein JSON-Objekt")
+        daten = self._json_koerper()
+        if daten is None:
+            return
         try:
             eintrag = meta.setzen(sid, daten)
         except meta.Ungueltig as e:
             return self._fehler(HTTPStatus.BAD_REQUEST, str(e))
         self._json(HTTPStatus.OK, {"sid": sid, **eintrag})
+
+    def _json_koerper(self) -> dict | None:
+        """JSON-Objekt aus dem Körper, oder None nach bereits gesendeter Fehlerantwort."""
+        laenge = int(self.headers.get("Content-Length") or 0)
+        if laenge > MAX_KOERPER:
+            self._fehler(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "zu groß")
+            return None
+        try:
+            daten = json.loads(self.rfile.read(laenge) or b"{}")
+            if not isinstance(daten, dict):
+                raise ValueError
+        except ValueError:
+            self._fehler(HTTPStatus.BAD_REQUEST, "kein JSON-Objekt")
+            return None
+        return daten
+
+    def _projekt_patch(self):
+        daten = self._json_koerper()
+        if daten is None:
+            return
+        cwd = daten.pop("cwd", None)
+        if cwd not in {e.get("cwd") for e in uebersicht.index_aktuell().values()} - {None}:
+            return self._fehler(HTTPStatus.NOT_FOUND, "Projekt unbekannt")
+        try:
+            ergebnis = meta.projekt_setzen(cwd, daten)
+        except meta.Ungueltig as e:
+            return self._fehler(HTTPStatus.BAD_REQUEST, str(e))
+        self._json(HTTPStatus.OK, ergebnis)
 
     def do_POST(self):
         if not self._host_ok():

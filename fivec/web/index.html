@@ -31,26 +31,20 @@
       <label for="suche">Suchen</label>
       <input id="suche" type="search" autocomplete="off" spellcheck="false">
     </div>
+    <button type="button" class="schalter" id="ausgeblendet-schalter" aria-pressed="false" hidden></button>
     <p class="zusammenfassung" id="zusammenfassung" aria-live="polite"></p>
   </header>
 
   <main class="inhalt">
-    <p class="meldung" id="meldung" role="status" hidden></p>
+    <div class="meldung" id="meldung" role="status" hidden><span id="meldung-text"></span><button type="button" class="meldung-knopf" id="meldung-knopf" hidden>Rückgängig</button></div>
     <div class="tabelle-rahmen">
       <div class="tabelle">
         <div class="spalten" aria-hidden="true">
-          <span>Zustand</span><span>Name und Beschreibung</span><span>Projekt</span><span>Letzte Aktivität</span><span class="rechts">Nachr.</span><span>Git</span><span></span>
+          <span>Zustand</span><span>Name und Beschreibung</span><span>Session</span><span>Letzte Aktivität</span><span class="rechts">Nachr.</span><span>Git</span><span></span>
         </div>
-        <section id="gruppe-laufend" aria-labelledby="titel-laufend" hidden>
-          <h2 id="titel-laufend">Läuft gerade</h2>
-          <div class="gruppe gruppe-laufend" id="liste-laufend"></div>
-        </section>
-        <section id="gruppe-zuletzt" aria-labelledby="titel-zuletzt">
-          <h2 id="titel-zuletzt">Zuletzt aktiv</h2>
-          <div class="gruppe" id="liste-zuletzt">
-            <div class="zeile skelett"></div><div class="zeile skelett"></div><div class="zeile skelett"></div>
-          </div>
-        </section>
+        <div id="gruppen">
+          <section class="gruppe"><div class="zeile skelett"></div><div class="zeile skelett"></div><div class="zeile skelett"></div></section>
+        </div>
         <div class="leer" id="leer" hidden>
           <p id="leer-text"></p>
           <button type="button" id="leer-erweitern">Zeitraum erweitern</button>

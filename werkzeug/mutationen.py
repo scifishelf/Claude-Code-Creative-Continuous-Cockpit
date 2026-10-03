@@ -9,6 +9,23 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 MUTATIONEN = [
+    ("laufende Session ausblendbar", "fivec/web/logik.js",
+     "return Boolean(zeile.ausgeblendet || zeile.projekt_ausgeblendet) && !laeuft(zeile);",
+     "return Boolean(zeile.ausgeblendet || zeile.projekt_ausgeblendet);"),
+    ("Projekt-Ausblenden wirkungslos", "fivec/web/logik.js",
+     "return Boolean(zeile.ausgeblendet || zeile.projekt_ausgeblendet) &&", "return Boolean(zeile.ausgeblendet) &&"),
+    ("Gruppen ohne Vorrang für laufende", "fivec/web/logik.js",
+     "gruppen.sort((a, b) => Number(b.laufend > 0) - Number(a.laufend > 0) || neuer(a, b));", "gruppen.sort(neuer);"),
+    ("eingeklappt versteckt laufende", "fivec/web/logik.js",
+     "zeilen: zu ? liste.filter(laeuft) : liste,", "zeilen: zu ? [] : liste,"),
+    ("Suche nach dem Gruppieren vergessen", "fivec/web/logik.js",
+     "const passend = zeilen.filter((z) => passtZurSuche(z, suche));", "const passend = zeilen;"),
+    ("Projekt beliebig ausblendbar", "fivec/dienst.py",
+     'if cwd not in {e.get("cwd") for e in uebersicht.index_aktuell().values()} - {None}:', "if not cwd:"),
+    ("ausgeblendet als beliebiger Wert", "fivec/meta.py",
+     "    if not isinstance(wert, bool):\n", "    if False:\n"),
+    ("Projekt-Flag nicht in der Liste", "fivec/uebersicht.py",
+     '"projekt_ausgeblendet": cwd in projekte_aus,', '"projekt_ausgeblendet": False,'),
     ("Mitteilung beim ersten Blick", "fivec/mitteilung.py",
      'vorher.get(z["sid"]) in AUS]', 'vorher.get(z["sid"]) != NACH]'),
     ("Mitteilung ohne Sperre", "fivec/mitteilung.py",

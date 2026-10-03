@@ -7,13 +7,13 @@ Stand: 03.10.2026, `eb65018` auf `main`, gepusht nach `github.com:scifishelf/Cla
 | Frage | Datei |
 |---|---|
 | Bedienung, Einrichten, API, Gesundheit, Fortsetzen | [README.md](README.md) |
-| Plan V1, Phasen P0 bis P6, Entscheidungen E1 bis E7, Ideen für danach | [docs/plans/2026-10-03-5c-v1-plan.md](docs/plans/2026-10-03-5c-v1-plan.md) |
+| Plan V1, Phasen P0 bis P6, Entscheidungen E1 bis E8, Ideen für danach | [docs/plans/2026-10-03-5c-v1-plan.md](docs/plans/2026-10-03-5c-v1-plan.md) |
 | Messbefunde (Statusdateien, iTerm2, Titel, launchd, Schreibtisch-Freigabe, Mitteilung) | [docs/plans/2026-10-03-messungen-ist.md](docs/plans/2026-10-03-messungen-ist.md) |
 | Entwürfe der Oberfläche (Variante A gewählt) | Canvas https://claude.ai/artifact/1FVkuCvMRSmi3Y7RDKXbeS (privat) |
 
 ## Wo wir stehen
 
-V1 ist abgeschlossen und in Nutzung: P0 bis P6, danach M1a (Statuswert `waiting`) und E7 (Mitteilung bei „wartet auf Dich“), je ein Commit. Eingerichtet auf diesem Mac:
+V1 ist abgeschlossen und in Nutzung: P0 bis P6, danach M1a (Statuswert `waiting`), E7 (Mitteilung bei „wartet auf Dich“) und E8 (Gruppen nach Projekt, Ausblenden), je ein Commit. Eingerichtet auf diesem Mac:
 
 - **Dienst** läuft als launchd-Agent `dev.fivec.cockpit.dienst` auf http://127.0.0.1:4555/, startet beim Login und nach Absturz neu (geprüft mit `kill -9`).
 - **5C.app** in `~/Applications` öffnet `fivec://open/<session-id>` (geprüft: holt iTerm2 nach vorn).
@@ -34,7 +34,7 @@ V1 ist abgeschlossen und in Nutzung: P0 bis P6, danach M1a (Statuswert `waiting`
 
 ## Was sofort zuschlägt
 
-- **Prüfkette:** `./pruefen.sh` muss grün sein: **88 Python- und 11 JS-Tests**. Gegenprobe `python3 werkzeug/mutationen.py`: **51 von 51 gefangen**. Jeder Fix bekommt einen Test und eine Mutation, die ihn belegt.
+- **Prüfkette:** `./pruefen.sh` muss grün sein: **93 Python- und 15 JS-Tests**. Gegenprobe `python3 werkzeug/mutationen.py`: **59 von 59 gefangen**. Jeder Fix bekommt einen Test und eine Mutation, die ihn belegt.
 - **Port 4555 gehört dem launchd-Dienst.** Ein zusätzlicher `bin/5c dienst` scheitert am Port. Zum Testen den Agent stoppen (`launchctl bootout gui/$(id -u)/dev.fivec.cockpit.dienst`) oder `--port` wählen; nach Codeänderungen `launchctl kickstart -k gui/$(id -u)/dev.fivec.cockpit.dienst`.
 - **Jeder Neubau von 5C.app** (`install.sh`, `werkzeug/app_bauen.sh`) fragt „5C → Schreibtisch“ neu ab; bis zur Antwort hängt das Applet (`UserNotificationCenter` vorn). Der Agent sieht den Dialog nicht: den Nutzer bitten.
 - **Eine Probe-Session ohne Eintippen:** in iTerm2 per `write text` `claude --permission-mode default "<Prompt>"` starten, der Prompt als Argument. So entstanden M1a und die E7-Proben. Danach den Fokus zurückgeben (`open -a Cursor`), sonst unterdrückt 5C die Mitteilung, weil der Tab vorn ist.

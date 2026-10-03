@@ -38,7 +38,7 @@
   --z-ruht: #5C636E;
   --mono: "Geist Mono", ui-monospace, Menlo, monospace;
   --sans: "Geist", system-ui, -apple-system, sans-serif;
-  --spalten: 168px minmax(0, 1fr) 280px 128px 64px 96px 136px;
+  --spalten: 168px minmax(0, 1fr) 88px 128px 64px 96px 236px;
 }
 
 @media (prefers-color-scheme: light) {
@@ -91,6 +91,9 @@ h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.025em; lin
 .suche label { font-size: 13px; color: var(--leise); }
 .suche input { flex: 1; min-width: 0; font-size: 13px; color: var(--text); background: var(--flaeche); border: 1px solid var(--rand-eingabe); border-radius: 8px; padding: 8px 10px; }
 .zusammenfassung { margin: 0 0 0 auto; color: var(--text-2); font-size: 13px; }
+.schalter { font-size: 13px; color: var(--text-2); background: transparent; border: 1px dashed var(--rand-knopf); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.schalter:hover { color: var(--text); border-color: var(--text-3); }
+.schalter[aria-pressed="true"] { color: var(--grund); background: var(--text-2); border: 1px solid var(--text-2); }
 
 /* Tabelle */
 .inhalt { max-width: 1376px; margin: 0 auto; padding: 24px 32px 48px; }
@@ -99,13 +102,22 @@ h1 { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.025em; lin
 .spalten, .zeile { display: grid; grid-template-columns: var(--spalten); gap: 16px; }
 .spalten { padding: 0 16px 10px; color: var(--leise); font-size: 12px; }
 .rechts { text-align: right; }
-h2 { margin: 12px 0 8px; padding: 0 16px; font-size: 13px; font-weight: 600; color: var(--text-2); }
-#gruppe-zuletzt h2 { margin-top: 28px; }
-#gruppe-laufend[hidden] + #gruppe-zuletzt h2 { margin-top: 12px; }
-.gruppe { border: 1px solid var(--linie); border-radius: 10px; overflow: hidden; }
-.gruppe-laufend { background: var(--flaeche); }
+#gruppen { display: flex; flex-direction: column; gap: 16px; }
+.gruppe { border: 1px solid var(--linie); border-radius: 10px; overflow: hidden; background: var(--flaeche); }
+.gruppe-kopf { display: flex; align-items: center; gap: 12px; padding: 6px 16px 6px 8px; background: var(--flaeche-tief); }
+.gruppe-zeilen:not(:empty) { border-top: 1px solid var(--linie); }
+.gruppe-klappe { display: flex; align-items: baseline; gap: 10px; flex: 1; min-width: 0; padding: 8px; border: 0; border-radius: 8px; background: none; color: var(--text); text-align: left; cursor: pointer; }
+.gruppe-klappe:hover .gruppe-titel { text-decoration: underline; text-decoration-color: var(--rand-knopf); text-underline-offset: 3px; }
+.pfeil { align-self: center; flex: none; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid var(--leise); transition: transform .15s ease; }
+.gruppe-klappe[aria-expanded="false"] .pfeil { transform: rotate(-90deg); }
+.gruppe-titel { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.gruppe-ort { font-family: var(--mono); font-size: 12px; color: var(--leise); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.gruppe-info { margin-left: auto; padding-left: 12px; font-size: 13px; color: var(--text-3); white-space: nowrap; }
+.marke { flex: none; font-size: 11px; color: var(--leise); border: 1px solid var(--rand-eingabe); border-radius: 2px; padding: 0 5px; }
+.gruppe-kopf.ausgeblendet .gruppe-titel, .gruppe-kopf.ausgeblendet .gruppe-ort { color: var(--leise); }
 .zeile { align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--linie-fein); }
-.gruppe > .zeile:last-child { border-bottom: 0; }
+.gruppe-zeilen > .zeile:last-child { border-bottom: 0; }
+.zeile.ausgeblendet > :not(.aktionen) { opacity: .5; }
 .zeile.bearbeiten { align-items: start; background: var(--flaeche-tief); }
 
 .zustand-zelle { min-width: 0; }
@@ -139,6 +151,7 @@ h2 { margin: 12px 0 8px; padding: 0 16px; font-size: 13px; font-weight: 600; col
 .git.leise { color: var(--leise); }
 .git.fehlt { color: var(--z-haengt); }
 
+.aktionen { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
 .knopf { justify-self: end; font-size: 13px; font-weight: 500; border-radius: 8px; padding: 8px 14px; min-height: 36px; cursor: pointer; white-space: nowrap; transition: transform .12s ease; }
 .knopf:active:not(:disabled) { transform: translateY(1px); }
 .knopf-vorn { color: var(--akzent-text); background: var(--akzent); border: 0; }
@@ -146,6 +159,13 @@ h2 { margin: 12px 0 8px; padding: 0 16px; font-size: 13px; font-weight: 600; col
 .knopf-fehlt { color: var(--gesperrt); background: transparent; border: 1px solid var(--linie); cursor: not-allowed; }
 .knopf-hell { color: var(--grund); background: var(--text); border: 0; }
 .knopf-leer { color: var(--text-2); background: transparent; border: 1px solid var(--rand-eingabe); }
+
+/* Ausblenden: leise, erscheint bei Hover und Tastaturfokus; ohne Hover (Touch) immer da. */
+.knopf-aus { color: var(--leise); background: transparent; border: 0; padding: 8px 10px; opacity: 0; transition: opacity .12s ease, color .12s ease; }
+.knopf-aus:hover { color: var(--text); }
+.zeile:hover .knopf-aus, .zeile:focus-within .knopf-aus, .gruppe-kopf:hover .knopf-aus, .gruppe-kopf:focus-within .knopf-aus,
+.zeile.ausgeblendet .knopf-aus, .gruppe-kopf.ausgeblendet .knopf-aus { opacity: 1; }
+@media (hover: none) { .knopf-aus { opacity: 1; } }
 
 /* Bearbeiten */
 .formular { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -169,6 +189,9 @@ h2 { margin: 12px 0 8px; padding: 0 16px; font-size: 13px; font-weight: 600; col
 .leer button { font-size: 13px; color: var(--text); background: transparent; border: 1px solid var(--rand-knopf); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
 .meldung { margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--linie); border-radius: 10px; background: var(--flaeche); color: var(--text-2); }
 .meldung.fehler { border-color: var(--fehler); color: var(--text); }
+.meldung:not([hidden]) { display: flex; align-items: center; gap: 12px; }
+.meldung-knopf { margin-left: auto; font-size: 13px; font-weight: 500; color: var(--akzent); background: none; border: 0; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+.meldung-knopf:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* Kopf und Leiste auf dieselbe Kante wie die Tabelle (max. 1376px, 32px Rand). */
 .kopf, .leiste { padding-inline: max(32px, calc((100% - 1376px) / 2 + 48px)); }
@@ -183,10 +206,13 @@ h2 { margin: 12px 0 8px; padding: 0 16px; font-size: 13px; font-weight: 600; col
   /* Jede Zeile wird ein kompakter Block: Zustand und Knopf oben, darunter Name, Projekt, Zeit und Git. */
   .tabelle { min-width: 0; }
   .spalten { display: none; }
-  h2 { padding: 0 4px; }
+  .gruppe-kopf { flex-wrap: wrap; gap: 0 8px; padding: 6px 8px; }
+  .gruppe-klappe { flex-wrap: wrap; gap: 2px 10px; }
+  .gruppe-info { margin-left: 0; padding-left: 0; flex-basis: 100%; padding-left: 20px; }
+  .gruppe-kopf > .knopf-aus { margin-left: auto; }
   .zeile { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 14px; }
   .zeile > .zustand-zelle { grid-column: 1; grid-row: 1; }
-  .zeile > .knopf, .zeile.bearbeiten > div:last-child { grid-column: 2; grid-row: 1; }
+  .zeile > .aktionen, .zeile.bearbeiten > div:last-child { grid-column: 2; grid-row: 1; }
   .zeile > .name-zelle, .zeile > .formular, .zeile > .projekt { grid-column: 1 / -1; }
   .zeile > .zeit { grid-column: 1; display: flex; gap: 8px; align-items: baseline; }
   .zeile > .git { grid-column: 2; justify-self: end; }
