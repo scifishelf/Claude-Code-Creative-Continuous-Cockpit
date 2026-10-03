@@ -4,6 +4,8 @@ A local dashboard for every Claude Code session on your Mac. See at a glance whi
 
 Everything runs locally: a small Python service with no dependencies, a static web page and an AppleScript app for the `fivec://` URL scheme. The UI is in German.
 
+**Preview:** [`sample/5c-cockpit.html`](sample/5c-cockpit.html) is a static snapshot of the cockpit with made-up sessions. Download it and open it in a browser; it works offline, with no scripts, and its buttons do nothing.
+
 ## Features
 
 - **Overview** of all sessions from `~/.claude/projects`, **grouped by project** (working directory). Groups with running sessions come first, and the rest are sorted by last activity. Groups can be collapsed, but a collapsed group still shows its running sessions.
